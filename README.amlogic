@@ -14,6 +14,7 @@ sudo /etc/init.d/nfs-kernel-server restart
 # The bootable rootfs is assumed to be going to /opt/aml-root.
 
  git clone git@github.com:Pivosgroup/buildroot-linux.git
+ cd buildroot-linux
  make amlogic_xios-xbmc_defconfig
  make
  sudo cp output/images/uImage /var/lib/tftpboot/
