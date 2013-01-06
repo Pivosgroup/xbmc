@@ -1379,6 +1379,7 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   m_brightness     = -1;
   m_vbufsize = 500000 * 2;
 
+  ShowMainVideo(false);
 
   am_packet_init(&am_private->am_pkt);
   // default stream type
@@ -1391,22 +1392,48 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   am_private->video_pid        = hints.pid;
   //am_private->video_pid        = 0;
 
+  // handle video ratio
   AVRational video_ratio       = m_dll->av_d2q(1, SHRT_MAX);
   //if (!hints.forced_aspect)
   //  video_ratio = m_dll->av_d2q(hints.aspect, SHRT_MAX);
   am_private->video_ratio      = ((int32_t)video_ratio.num << 16) | video_ratio.den;
   am_private->video_ratio64    = ((int64_t)video_ratio.num << 32) | video_ratio.den;
+
+  // handle video rate
   if (hints.rfpsrate > 0 && hints.rfpsscale != 0)
-    am_private->video_rate     = 0.5 + (float)UNIT_FREQ * hints.rfpsscale / hints.rfpsrate;
+  {
+    // check ffmpeg r_frame_rate 1st
+    am_private->video_rate = 0.5 + (float)UNIT_FREQ * hints.rfpsscale / hints.rfpsrate;
+  }
+  else if (hints.fpsrate > 0 && hints.fpsscale != 0)
+  {
+    // then ffmpeg avg_frame_rate next
+    am_private->video_rate = 0.5 + (float)UNIT_FREQ * hints.fpsscale / hints.fpsrate;
+  }
   else
   {
     // stupid PVR hacks because it does not fill in all of hints.
     if (hints.codec == CODEC_ID_MPEG2VIDEO)
     {
       am_private->video_rate = 0.5 + (float)UNIT_FREQ * 1001 / 30000;
-      if (hints.codec == 1280)
+      if (hints.width == 1280)
         am_private->video_rate = 0.5 + (float)UNIT_FREQ * 1001 / 60000;;
     }
+  }
+  // check for 1920x1080, interlaced, 25 fps
+  // incorrectly reported as 50 fps (yes, video_rate == 1920)
+  if (hints.width == 1920 && am_private->video_rate == 1920)
+  {
+    CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder video_rate exception");
+    am_private->video_rate = 0.5 + (float)UNIT_FREQ * 1001 / 25000;
+  }
+
+  // check for SD h264 content incorrectly reported as 60 fsp
+  // mp4/avi containers :(
+  if (hints.codec == CODEC_ID_H264 && hints.width == 720 && am_private->video_rate == 1602)
+  {
+    CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder video_rate exception");
+    am_private->video_rate = 0.5 + (float)UNIT_FREQ * 1001 / 24000;
   }
 
   // handle orientation
@@ -1473,6 +1500,7 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
       break;
     case VFORMAT_H264:
     case VFORMAT_H264MVC:
+      am_private->vcodec.am_sysinfo.format  = VIDEO_DEC_FORMAT_H264;
       am_private->vcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
       break;
     case VFORMAT_REAL:
@@ -1549,6 +1577,8 @@ void CAMLCodec::CloseDecoder()
   am_private->extradata = NULL;
   // return tsync to default so external apps work
   aml_set_sysfs_int("/sys/class/tsync/enable", 1);
+
+  ShowMainVideo(false);
 }
 
 void CAMLCodec::Reset()
@@ -1709,8 +1739,11 @@ void CAMLCodec::Process()
       // this is a blocking poll that returns every vsync.
       // since we are running at a higher priority, make sure
       // we sleep if the call fails or does a timeout.
-      if (m_dll->codec_poll_cntl(&am_private->vcodec) <= 0)
+      if (m_dll->codec_poll_cntl(&am_private->vcodec) < 0)
+      {
+        CLog::Log(LOGDEBUG, "CAMLCodec::Process: codec_poll_cntl failed");
         Sleep(10);
+      }
 
       if (g_application.m_pPlayer && g_application.m_pPlayer->IsPlaying())
       {

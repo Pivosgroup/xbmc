@@ -145,7 +145,7 @@ IAESink *CSoftAE::GetSink(AEAudioFormat &newFormat, bool passthrough, std::strin
 }
 
 /* this method MUST be called while holding m_streamLock */
-inline CSoftAEStream *CSoftAE::GetMasterStream()
+CSoftAEStream *CSoftAE::GetMasterStream()
 {
   /* remove any destroyed streams first */
   for (StreamList::iterator itt = m_streams.begin(); itt != m_streams.end();)
@@ -616,7 +616,7 @@ void CSoftAE::VerifySoundDevice(std::string& device, bool passthrough)
   device = firstDevice;
 }
 
-inline void CSoftAE::GetDeviceFriendlyName(std::string &device)
+void CSoftAE::GetDeviceFriendlyName(std::string &device)
 {
   m_deviceFriendlyName = "Device not found";
   /* Match the device and find its friendly name */
@@ -1368,7 +1368,7 @@ unsigned int CSoftAE::RunStreamStage(unsigned int channelCount, void *out, bool 
   return mixed;
 }
 
-inline void CSoftAE::ResumeSlaveStreams(const StreamList &streams)
+void CSoftAE::ResumeSlaveStreams(const StreamList &streams)
 {
   if (streams.empty())
     return;
@@ -1383,7 +1383,7 @@ inline void CSoftAE::ResumeSlaveStreams(const StreamList &streams)
   }
 }
 
-inline void CSoftAE::RemoveStream(StreamList &streams, CSoftAEStream *stream)
+void CSoftAE::RemoveStream(StreamList &streams, CSoftAEStream *stream)
 {
   StreamList::iterator f = std::find(streams.begin(), streams.end(), stream);
   if (f != streams.end())
@@ -1393,18 +1393,24 @@ inline void CSoftAE::RemoveStream(StreamList &streams, CSoftAEStream *stream)
     m_streamsPlaying = !m_playingStreams.empty();
 }
 
-inline void CSoftAE::ProcessSuspend()
+void CSoftAE::ProcessSuspend()
 {
   bool sinkIsSuspended = false;
+  unsigned int curSystemClock = 0;
 
-  if (m_playingStreams.empty() && m_playing_sounds.empty() && 
-     !m_softSuspend && !g_advancedSettings.m_streamSilence)
+  if (!m_softSuspend && m_playingStreams.empty() && m_playing_sounds.empty() &&
+      !g_advancedSettings.m_streamSilence)
   {
     m_softSuspend = true;
-    m_softSuspendTimer = XbmcThreads::SystemClockMillis() + 10000; //10.0 second delay for softSuspend
+    // only one call to SystemClockMillis, please.
+    curSystemClock = XbmcThreads::SystemClockMillis();
+    m_softSuspendTimer = curSystemClock + 10000; //10.0 second delay for softSuspend
   }
-
-  unsigned int curSystemClock = XbmcThreads::SystemClockMillis();
+  else
+  {
+    // some hole in the logic, set this or we will consume cpu and bork audio.
+    m_softSuspend = false;
+  }
 
   /* idle while in Suspend() state until Resume() called */
   /* idle if nothing to play and user hasn't enabled     */
@@ -1427,8 +1433,9 @@ inline void CSoftAE::ProcessSuspend()
       sinkLock.Leave();
     }
 
-    /* idle for platform-defined time */
-    m_wake.WaitMSec(SOFTAE_IDLE_WAIT_MSEC);
+    /* idle for platform-defined time if streams or sounds are empty */
+    if (m_playingStreams.empty() && m_playing_sounds.empty())
+      m_wake.WaitMSec(SOFTAE_IDLE_WAIT_MSEC);
 
     /* check if we need to resume for stream or sound */
     if (!m_isSuspended && (!m_playingStreams.empty() || !m_playing_sounds.empty()))

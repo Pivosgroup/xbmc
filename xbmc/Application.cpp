@@ -463,6 +463,7 @@ CApplication::~CApplication(void)
   delete m_dpms;
   delete m_seekHandler;
   delete m_pInertialScrollingHandler;
+
 }
 
 bool CApplication::OnEvent(XBMC_Event& newEvent)
@@ -2067,7 +2068,9 @@ void CApplication::UnloadSkin(bool forReload /* = false */)
 
   g_infoManager.Clear();
 
-  g_SkinInfo.reset();
+//  The g_SkinInfo boost shared_ptr ought to be reset here
+// but there are too many places it's used without checking for NULL
+// and as a result a race condition on exit can cause a crash.
 }
 
 bool CApplication::LoadUserWindows()
@@ -3468,6 +3471,7 @@ bool CApplication::Cleanup()
     _CrtDumpMemoryLeaks();
     while(1); // execution ends
 #endif
+
     return true;
   }
   catch (...)
@@ -4794,11 +4798,18 @@ bool CApplication::OnMessage(CGUIMessage& message)
 #endif
       // reset the seek handler
       m_seekHandler->Reset();
+      CPlayList playList = g_playlistPlayer.GetPlaylist(g_playlistPlayer.GetCurrentPlaylist());
 
       // Update our infoManager with the new details etc.
       if (m_nextPlaylistItem >= 0)
-      { // we've started a previously queued item
-        CFileItemPtr item = g_playlistPlayer.GetPlaylist(g_playlistPlayer.GetCurrentPlaylist())[m_nextPlaylistItem];
+      { 
+        // playing an item which is not in the list - player might be stopped already
+        // so do nothing
+        if (playList.size() <= m_nextPlaylistItem)
+          return true;
+
+        // we've started a previously queued item
+        CFileItemPtr item = playList[m_nextPlaylistItem];
         // update the playlist manager
         int currentSong = g_playlistPlayer.GetCurrentSong();
         int param = ((currentSong & 0xffff) << 16) | (m_nextPlaylistItem & 0xffff);
@@ -5360,8 +5371,9 @@ void CApplication::SetHardwareVolume(float hardwareVolume)
 
   CAEFactory::SetVolume(value);
 
-  /* for platforms where we do not have AE */
-  if (!CAEFactory::GetEngine() && m_pPlayer)
+  // for platforms where we do not have AE or
+  // when AE is suspended because player does not use AE and suspends it.
+  if (m_pPlayer && (!CAEFactory::GetEngine() || CAEFactory::IsSuspended()))
     m_pPlayer->SetVolume(g_settings.m_fVolumeLevel);
 }
 
@@ -5855,7 +5867,6 @@ CKeyringManager& CApplication::getKeyringManager()
 {
   return m_keyringManager;
 }
-
 #ifdef HAS_PERFORMANCE_SAMPLE
 CPerformanceStats &CApplication::GetPerformanceStats()
 {

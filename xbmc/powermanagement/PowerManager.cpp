@@ -21,6 +21,7 @@
 #include "system.h"
 #include "PowerManager.h"
 #include "Application.h"
+#include "cores/AudioEngine/AEFactory.h"
 #include "input/KeyboardStat.h"
 #include "settings/GUISettings.h"
 #include "windowing/WindowingFactory.h"
@@ -209,6 +210,7 @@ void CPowerManager::OnSleep()
   g_application.StopPlaying();
   g_application.StopShutdownTimer();
   g_application.StopScreenSaverTimer();
+  CAEFactory::Suspend();
 }
 
 void CPowerManager::OnWake()
@@ -248,6 +250,7 @@ void CPowerManager::OnWake()
   g_lcd->Initialize();
 #endif
 
+  CAEFactory::Resume();
   g_application.UpdateLibraries();
   g_weatherManager.Refresh();
 

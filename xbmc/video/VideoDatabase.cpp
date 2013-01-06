@@ -3090,6 +3090,7 @@ CVideoInfoTag CVideoDatabase::GetDetailsByTypeAndId(VIDEODB_CONTENT_TYPE type, i
       break;
     case VIDEODB_CONTENT_MUSICVIDEOS:
       GetMusicVideoInfo("", details, id);
+      break;
     default:
       break;
   }
@@ -4953,7 +4954,7 @@ bool CVideoDatabase::GetSetsByWhere(const CStdString& strBaseDir, const Filter &
       return false;
 
     CFileItemList sets;
-    if (!GroupUtils::Group(GroupBySet, items, sets))
+    if (!GroupUtils::Group(GroupBySet, strBaseDir, items, sets))
       return false;
 
     items.ClearItems();
