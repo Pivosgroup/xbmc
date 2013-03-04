@@ -172,6 +172,47 @@ bool CSettings::Load()
   CLog::Log(LOGNOTICE, "loading %s", GetSettingsFile().c_str());
   if (!LoadSettings(GetSettingsFile()))
   {
+	CLog::Log(LOGERROR, "Unable to load %s file, appears to be bad", GetSettingsFile().c_str());
+    // Move bad settings file to ".bad"
+	// Delete old ".bad" file if it exists
+	   if (CFile::Exists(GetSettingsFile() + ".bad"))
+		   CFile::Delete(GetSettingsFile() + ".bad");
+	// Rename current file to .bad
+		CFile::Rename(GetSettingsFile(),GetSettingsFile() + ".bad");
+	// Check if lastgood exists so we can restore it
+	if (CFile::Exists(GetSettingsFile() + ".lastgood"))
+	{
+		CLog::Log(LOGERROR, "Trying to restore .lastgood for %s file", GetSettingsFile().c_str());
+		// try to restore lastgood if it exists
+		// we copy instead of rename, so lastgood exist even if this goes bad
+		CFile source_settings, dest_settings;
+		      char * cpybuffer;
+		      int bytes_read;
+		      cpybuffer = (char*) malloc(sizeof(char) * 32768);
+		      if (cpybuffer != NULL)
+		      {
+		    	  if (source_settings.Open(GetSettingsFile() + ".lastgood",0))
+		    	  {
+		    		  if (dest_settings.OpenForWrite(GetSettingsFile()))
+		    		  {
+		    			  while ( (bytes_read = source_settings.Read(cpybuffer, 32768)) > 0 )
+		    			  {
+		    				  dest_settings.Write(cpybuffer,bytes_read);
+		    			  }
+		    			  dest_settings.Close();
+		    		  }
+		    		  source_settings.Close();
+		    		  // Try loading the lastgood backup
+		    		  if ( LoadSettings(GetSettingsFile()) )
+		    		  {
+		    			  CLog::Log(LOGERROR, "System has been restored to last good configuration for %s file", GetSettingsFile().c_str());
+		    			  return true;
+		    		  }
+		    	  }
+		    	  free(cpybuffer);
+		      }
+	 }
+
     CLog::Log(LOGERROR, "Unable to load %s, creating new %s with default values", GetSettingsFile().c_str(), GetSettingsFile().c_str());
     if (!Reset())
       return false;
@@ -817,6 +858,34 @@ bool CSettings::LoadSettings(const CStdString& strSettingsFile)
     CLog::Log(LOGNOTICE, "Disabled debug logging due to GUI setting. Level %d.", g_advancedSettings.m_logLevel);
   }  
   CLog::SetLogLevel(g_advancedSettings.m_logLevel);
+
+  //
+  // Settings file looks good, lets back it up to be safe
+  // back up settings file to what ever its named with a .lastgood extension
+
+      CFile source_settings, dest_settings;
+      char * cpybuffer;
+      int bytes_read;
+
+      cpybuffer = (char*) malloc(sizeof(char) * 32768);
+      if (cpybuffer != NULL)
+      {
+    	  CFile::Delete(strSettingsFile + ".lastgood");
+    	  if (source_settings.Open(strSettingsFile,0))
+    	  {
+    		  if (dest_settings.OpenForWrite(strSettingsFile + ".lastgood"))
+    		  {
+    			  while ( (bytes_read = source_settings.Read(cpybuffer, 32768)) > 0 )
+    			  {
+    				  dest_settings.Write(cpybuffer,bytes_read);
+    			  }
+    			  dest_settings.Close();
+    		  }
+    		  source_settings.Close();
+    	  }
+    	  free(cpybuffer);
+      }
+
   return true;
 }
 
