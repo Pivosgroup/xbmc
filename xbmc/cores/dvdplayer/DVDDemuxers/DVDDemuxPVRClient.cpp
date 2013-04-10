@@ -276,14 +276,14 @@ void CDVDDemuxPVRClient::ParsePacket(DemuxPacket* pkt)
         CHECK_UPDATE(stv, iWidth        , pvr->m_context->width , 0);
         CHECK_UPDATE(stv, iHeight       , pvr->m_context->height, 0);
 
-        if((pkt->duration > 0) && (pkt->duration != stv->iFpsScale))
+        if (pvr->m_context->sample_aspect_ratio.den > 0)
         {
-          CLog::Log(LOGDEBUG, "%s - {%d} iFpsScale changed from %d to %d",  __FUNCTION__, stv->iId, stv->iFpsScale, pkt->duration);
-          stv->iFpsScale = pkt->duration;
-          CLog::Log(LOGDEBUG, "%s - {%d} iFpsRate changed from %d to %d",  __FUNCTION__, stv->iId, stv->iFpsRate, DVD_TIME_BASE);
-          stv->iFpsRate = DVD_TIME_BASE;
-          stv->changes += 2;
-          stv->disabled = false;
+          CHECK_UPDATE(stv, fAspect     , ((float)(pvr->m_context->sample_aspect_ratio.num / pvr->m_context->sample_aspect_ratio.den)), 0);
+        }
+        if (pkt->duration > 0)
+        {
+          CHECK_UPDATE(stv, iFpsScale , pkt->duration , 0);
+          CHECK_UPDATE(stv, iFpsRate  , DVD_TIME_BASE , 0);
         }
         break;
       }
