@@ -1493,20 +1493,13 @@ void CDVDPlayer::HandlePlaySpeed()
     bool bGotVideo(m_pDemuxer->GetNrOfVideoStreams() > 0);
     bool bAudioLevelOk(m_dvdPlayerAudio.GetLevel() > g_advancedSettings.m_iPVRMinAudioCacheLevel);
     bool bVideoLevelOk(m_dvdPlayerVideo.GetLevel() > g_advancedSettings.m_iPVRMinVideoCacheLevel);
-    //bool bAudioFull(!m_dvdPlayerAudio.AcceptsData());
-    //bool bVideoFull(!m_dvdPlayerVideo.AcceptsData());
+    bool bAudioFull(!m_dvdPlayerAudio.AcceptsData());
+    bool bVideoFull(!m_dvdPlayerVideo.AcceptsData());
 
-#if 0
     if (/* if all streams got at least g_advancedSettings.m_iPVRMinCacheLevel in their buffers, we're done */
         ((bGotVideo || bGotAudio) && (!bGotAudio || bAudioLevelOk) && (!bGotVideo || bVideoLevelOk)) ||
         /* or if one of the buffers is full */
-        ((bAudioFull && (!bGotVideo || bVideoLevelOk)) || (bVideoFull && (!bGotAudio || bAudioLevelOk))))
-#endif
-    if (/* if all streams got at least g_advancedSettings.m_iPVRMinCacheLevel in their buffers, we're done */
-        /* Short version of the extended condition above:
-         * Video buffer could be full, before audio has reached his minimum and vice versa -> fail again!
-         * Result: Everything depends on availability or min. buffer level. */
-        (!bGotAudio || bAudioLevelOk) && (!bGotVideo || bVideoLevelOk))
+        (bAudioFull || bVideoFull))
     {
       CLog::Log(LOGDEBUG, "set caching from pvr to done. audio (%d) = %d. video (%d) = %d",
           bGotAudio, m_dvdPlayerAudio.GetLevel(),
