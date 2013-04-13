@@ -63,6 +63,7 @@ CSoftAE::CSoftAE():
   m_isSuspended        (false       ),
   m_softSuspend        (false       ),
   m_softSuspendTimer   (0           ),
+  m_volume             (1.0         ),
   m_sink               (NULL        ),
   m_transcode          (false       ),
   m_rawPassthrough     (false       ),
@@ -727,7 +728,6 @@ void CSoftAE::PauseStream(CSoftAEStream *stream)
   CSingleLock streamLock(m_streamLock);
   RemoveStream(m_playingStreams, stream);
   stream->m_paused = true;
-  streamLock.Leave();
 
   m_reOpen = true;
   m_wake.Set();
@@ -873,7 +873,10 @@ IAEStream *CSoftAE::FreeStream(IAEStream *stream)
   RemoveStream(m_streams       , (CSoftAEStream*)stream);
   // Reopen is old behaviour. Not opening when masterstream stops means clipping on S/PDIF.
   if(!m_isSuspended && (m_masterStream == stream))
+  {
     m_reOpen = true;
+    m_masterStream = NULL;
+  }
 
   delete (CSoftAEStream*)stream;
   return NULL;
@@ -972,8 +975,10 @@ bool CSoftAE::Suspend()
 {
   CLog::Log(LOGDEBUG, "CSoftAE::Suspend - Suspending AE processing");
   m_isSuspended = true;
+
+  StopAllSounds();
+
   CSingleLock streamLock(m_streamLock);
-  
   for (StreamList::iterator itt = m_playingStreams.begin(); itt != m_playingStreams.end(); ++itt)
   {
     CSoftAEStream *stream = *itt;
@@ -982,7 +987,6 @@ bool CSoftAE::Suspend()
   streamLock.Leave();
   #if defined(TARGET_LINUX)
   /*workaround sinks not playing sound after resume */
-    StopAllSounds();
     bool ret = true;
     if(m_sink)
     {
@@ -1057,11 +1061,11 @@ void CSoftAE::Run()
     bool restart = false;
 
     /* with the new non blocking implementation - we just reOpen here, when it tells reOpen */
-    if (!m_reOpen && (this->*m_outputStageFn)(hasAudio) > 0)
+    if ((this->*m_outputStageFn)(hasAudio) > 0)
       hasAudio = false; /* taken some audio - reset our silence flag */
 
     /* if we have enough room in the buffer */
-    if (!m_reOpen && m_buffer.Free() >= m_frameSize)
+    if (m_buffer.Free() >= m_frameSize)
     {
       /* take some data for our use from the buffer */
       uint8_t *out = (uint8_t*)m_buffer.Take(m_frameSize);
@@ -1533,7 +1537,8 @@ inline void CSoftAE::ProcessSuspend()
      */
     if (!m_isSuspended && (!m_playingStreams.empty() || !m_playing_sounds.empty()))
     {
-      m_reOpen = !m_sink->SoftResume() || m_reOpen; // sink returns false if it requires reinit (worthless with current implementation)
+      // the sink might still be not initialized after Resume of real suspend
+      m_reOpen = m_sink && (!m_sink->SoftResume() || m_reOpen); // sink returns false if it requires reinit (worthless with current implementation)
       m_sinkIsSuspended = false; //sink processing data
       m_softSuspend   = false; //break suspend loop (under some conditions)
       CLog::Log(LOGDEBUG, "Resumed the Sink");

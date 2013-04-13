@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,9 +24,9 @@
 #include "PulseAE.h"
 #include "PulseAEStream.h"
 #include "PulseAESound.h"
+#include "Application.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
-#include "settings/Settings.h"
 #include <pulse/pulseaudio.h>
 #include <pulse/simple.h>
 #include "guilib/LocalizeStrings.h"
@@ -81,6 +81,7 @@ CPulseAE::CPulseAE()
   m_Context = NULL;
   m_MainLoop = NULL;
   m_muted = false;
+  m_Volume = 0.0f;
 }
 
 CPulseAE::~CPulseAE()
@@ -125,7 +126,7 @@ bool CPulseAE::CanInit()
 
 bool CPulseAE::Initialize()
 {
-  m_Volume = g_settings.m_fVolumeLevel;
+  m_Volume = g_application.GetVolume(false);
 
   if ((m_MainLoop = pa_threaded_mainloop_new()) == NULL)
   {

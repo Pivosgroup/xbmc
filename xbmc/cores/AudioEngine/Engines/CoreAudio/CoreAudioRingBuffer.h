@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -156,7 +156,7 @@ public:
     unsigned int space = GetReadSize();
 
     //want to read more than we have written?
-    if( space <= 0 )
+    if( space == 0 )
     {
 #ifdef RING_BUFFER_DEBUG
       CLog::Log(LOGDEBUG, "CoereAudioRingBuffer: Can't read from empty buffer.");
