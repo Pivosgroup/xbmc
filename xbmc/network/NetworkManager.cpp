@@ -70,6 +70,9 @@ void CNetworkManager::Initialize()
 
   m_defaultConnection = CConnectionPtr(new CNullConnection());
   OnConnectionListChange(m_instance->GetConnections());
+  //start services although no network is available
+  if (IsConnected() == false)
+    StartServices();
 }
 
 bool CNetworkManager::PumpNetworkEvents()
