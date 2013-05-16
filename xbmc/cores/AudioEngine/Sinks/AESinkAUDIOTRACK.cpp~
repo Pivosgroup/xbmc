@@ -27,8 +27,6 @@
 #include "utils/AMLUtils.h"
 #endif
 
-#define DEFAULT_AUDIO_OFFSET 0.250f
-
 #include <jni.h>
 
 #if defined(__ARM_NEON__)
@@ -186,7 +184,7 @@ double CAESinkAUDIOTRACK::GetDelay()
   sinkbuffer_seconds_to_empty += m_audiotrack_empty_sec;
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   if (sinkbuffer_seconds_to_empty > 0.0)
-    sinkbuffer_seconds_to_empty += DEFAULT_AUDIO_OFFSET;
+    sinkbuffer_seconds_to_empty += 0.250;
 #endif
   return sinkbuffer_seconds_to_empty;
 }
@@ -200,7 +198,7 @@ double CAESinkAUDIOTRACK::GetCacheTime()
   sinkbuffer_seconds_to_empty += m_audiotrack_empty_sec;
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   if (sinkbuffer_seconds_to_empty > 0.0)
-    sinkbuffer_seconds_to_empty += DEFAULT_AUDIO_OFFSET;
+    sinkbuffer_seconds_to_empty += 0.250;
 #endif
   return sinkbuffer_seconds_to_empty;
 }
@@ -416,7 +414,7 @@ void CAESinkAUDIOTRACK::Process()
       // Audiotrack will playout any written contents.
       jenv->CallVoidMethod(joAudioTrack, jmStop);
       // sleep this audio thread, we will get woken when we have audio data.
-      m_wake.WaitMSec(DEFAULT_AUDIO_OFFSET*1000);
+      m_wake.WaitMSec(250);
     }
   }
 
