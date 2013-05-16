@@ -576,6 +576,7 @@ lib/cmyth/Makefile
 
 # /xbmc/cores/AudioEngine/
 /xbmc/cores/AudioEngine/Makefile
+/xbmc/cores/AudioEngine/Sinks/*.cpp~
 
 # /xbmc/cores/DllLoader/exports/
 /xbmc/cores/DllLoader/exports/build_wrapper.sh
