@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -361,6 +361,10 @@ bool CCoreAudioDevice::SetHogStatus(bool hog)
       // even if setting hogmode was successfull our PID might not get written
       // into m_HogPid (so it stays -1). Readback hogstatus for judging if we
       // had success on getting hog status
+      // We do this only when AudioObjectSetPropertyData didn't set m_HogPid because
+      // it seems that in the other cases the GetHogStatus could return -1
+      // which would overwrite our valid m_HogPid again
+      // Man we should never touch this shit again ;)
       if (m_HogPid == -1)
         m_HogPid = GetHogStatus();
 

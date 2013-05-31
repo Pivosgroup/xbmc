@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -26,8 +26,6 @@
 
 
 #include <AudioToolbox/AudioToolbox.h>
-
-UInt32 CCoreAudioMixMap::m_deviceChannels = 0;
 
 CCoreAudioMixMap::CCoreAudioMixMap() :
   m_isValid(false)
@@ -60,12 +58,12 @@ void CCoreAudioMixMap::Rebuild(AudioChannelLayout& inLayout, AudioChannelLayout&
   // Try to find a 'well-known' matrix
   const AudioChannelLayout* layouts[] = {&inLayout, &outLayout};
   UInt32 propSize = 0;
-  OSStatus ret = AudioFormatGetPropertyInfo(kAudioFormatProperty_MatrixMixMap,
+  AudioFormatGetPropertyInfo(kAudioFormatProperty_MatrixMixMap,
     sizeof(layouts), layouts, &propSize);
   m_pMap = (Float32*)calloc(1,propSize);
 
   // Try and get a predefined mixmap
-  ret = AudioFormatGetProperty(kAudioFormatProperty_MatrixMixMap,
+  OSStatus ret = AudioFormatGetProperty(kAudioFormatProperty_MatrixMixMap,
     sizeof(layouts), layouts, &propSize, m_pMap);
   if (!ret)
   {
@@ -122,7 +120,7 @@ CCoreAudioMixMap *CCoreAudioMixMap::CreateMixMap(CAUOutputDevice  *audioUnit, AE
     for (unsigned int chan=0; chan < inputFormat.mChannelsPerFrame; chan++)
     {
       AudioChannelDescription* pDesc = &pInLayout->mChannelDescriptions[chan];
-      if (pDesc->mChannelLabel == kAudioChannelLabel_LeftSurround || pDesc->mChannelLabel == kAudioChannelLabel_LeftSurround)
+      if (pDesc->mChannelLabel == kAudioChannelLabel_LeftSurround || pDesc->mChannelLabel == kAudioChannelLabel_RightSurround)
         break; // Required condition cannot be true
 
       if (pDesc->mChannelLabel == kAudioChannelLabel_LeftSurroundDirect)
@@ -162,8 +160,6 @@ CCoreAudioMixMap *CCoreAudioMixMap::CreateMixMap(CAUOutputDevice  *audioUnit, AE
   CCoreAudioChannelLayout deviceLayout;
   if (!audioUnit->GetPreferredChannelLayout(deviceLayout))
     return NULL;
-    
-  m_deviceChannels = CCoreAudioChannelLayout::GetChannelCountForLayout(*deviceLayout);
 
   // When all channels on the output device are unknown take the gui layout
   //if(deviceLayout.AllChannelUnknown())
@@ -209,15 +205,47 @@ bool CCoreAudioMixMap::SetMixingMatrix(CAUMatrixMixer *mixerUnit,
   if (!mixerUnit || !inputFormat || !fmt)
     return false;
 
+  // Fetch the mixing unit size
+  UInt32 dims[2];
+  UInt32 size = sizeof(dims);
+  AudioUnitGetProperty(mixerUnit->GetUnit(),
+    kAudioUnitProperty_MatrixDimensions, kAudioUnitScope_Global, 0, dims, &size);
+
+  if(inputFormat->mChannelsPerFrame + channelOffset > dims[0])
+  {
+    CLog::Log(LOGERROR, "CCoreAudioMixMap::SetMixingMatrix - input format doesn't fit mixer size %u+%u > %u"
+                      , inputFormat->mChannelsPerFrame, channelOffset, dims[0]);
+    return false;
+  }
+
+  if(fmt->mChannelsPerFrame > dims[1])
+  {
+    CLog::Log(LOGERROR, "CCoreAudioMixMap::SetMixingMatrix - ouput format doesn't fit mixer size %u > %u"
+              , fmt->mChannelsPerFrame, dims[1]);
+    return false;
+  }
+
+  if(fmt->mChannelsPerFrame < dims[1])
+  {
+    CLog::Log(LOGWARNING, "CCoreAudioMixMap::SetMixingMatrix - ouput format doesn't specify all outputs %u < %u"
+              , fmt->mChannelsPerFrame, dims[1]);
+  }
+
   // Configure the mixing matrix
   Float32* val = (Float32*)*mixMap;
   for (UInt32 i = 0; i < inputFormat->mChannelsPerFrame; ++i)
   {
-    val = (Float32*)*mixMap + i*m_deviceChannels;
-    for (UInt32 j = 0; j < fmt->mChannelsPerFrame; ++j)
+    UInt32 j = 0;
+    for (; j < fmt->mChannelsPerFrame; ++j)
     {
       AudioUnitSetParameter(mixerUnit->GetUnit(),
         kMatrixMixerParam_Volume, kAudioUnitScope_Global, ( (i + channelOffset) << 16 ) | j, *val++, 0);
+    }
+    // zero out additional outputs from this input
+    for (; j < dims[1]; ++j)
+    {
+      AudioUnitSetParameter(mixerUnit->GetUnit(),
+        kMatrixMixerParam_Volume, kAudioUnitScope_Global, ( (i + channelOffset) << 16 ) | j, 0.0f, 0);
     }
   }
 

@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2011-2012 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -46,7 +46,7 @@ public:
   bool             Close();
   bool             Start();
   bool             Stop();
-  AudioChannelLayoutTag GetChannelLayoutTag(int layout);
+  static AudioChannelLayoutTag GetChannelLayoutTag(int layout);
   bool             SetInputSource(ICoreAudioSource *pSource);
   bool             SetCurrentVolume(Float32 vol);
   CAUOutputDevice* DestroyUnit(CAUOutputDevice *outputUnit);
