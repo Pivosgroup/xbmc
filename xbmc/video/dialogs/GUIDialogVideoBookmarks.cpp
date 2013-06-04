@@ -210,9 +210,11 @@ void CGUIDialogVideoBookmarks::Clear()
 void CGUIDialogVideoBookmarks::GotoBookmark(int item)
 {
   if (item < 0 || item >= (int)m_bookmarks.size()) return;
-  if (g_application.m_pPlayer)
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+  if (app_player)
   {
-    g_application.m_pPlayer->SetPlayerState(m_bookmarks[item].playerState);
+    app_player->SetPlayerState(m_bookmarks[item].playerState);
     g_application.SeekTime((double)m_bookmarks[item].timeInSeconds);
   }
 }
@@ -239,11 +241,14 @@ void CGUIDialogVideoBookmarks::AddBookmark(CVideoInfoTag* tag)
   bookmark.timeInSeconds = (int)g_application.GetTime();
   bookmark.totalTimeInSeconds = (int)g_application.GetTotalTime();
 
-  if( g_application.m_pPlayer )
-    bookmark.playerState = g_application.m_pPlayer->GetPlayerState();
-  else
-    bookmark.playerState.Empty();
-
+  {
+    CSingleLock lock(*g_application.getPlayerLock());
+    IPlayer *app_player = g_application.getPlayer();
+    if (app_player)
+      bookmark.playerState = app_player->GetPlayerState();
+    else
+      bookmark.playerState.Empty();
+  }
   bookmark.player = CPlayerCoreFactory::GetPlayerName(g_application.GetCurrentPlayer());
 
   // create the thumbnail image

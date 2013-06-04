@@ -491,11 +491,11 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       break;
 
     case TMSG_MEDIA_PAUSE:
-      if (g_application.m_pPlayer)
+      if (g_application.hasPlayer())
       {
         g_application.ResetScreenSaver();
         g_application.WakeUpScreenSaverAndDPMS();
-        g_application.m_pPlayer->Pause();
+        g_application.PausePlaying();
       }
       break;
 
@@ -504,7 +504,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       {
         g_application.ResetScreenSaver();
         g_application.WakeUpScreenSaverAndDPMS();
-        g_application.m_pPlayer->Pause();
+        g_application.PausePlaying();
       }
       break;
 

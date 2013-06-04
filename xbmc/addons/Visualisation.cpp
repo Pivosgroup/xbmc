@@ -106,8 +106,12 @@ bool CVisualisation::Create(int x, int y, int w, int h)
 
     CreateBuffers();
 
-    if (g_application.m_pPlayer)
-      g_application.m_pPlayer->RegisterAudioCallback(this);
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *player = g_application.getPlayer();
+      if (player)
+        player->RegisterAudioCallback(this);
+    }
 
     return true;
   }
@@ -171,7 +175,13 @@ void CVisualisation::Render()
 
 void CVisualisation::Stop()
 {
-  if (g_application.m_pPlayer) g_application.m_pPlayer->UnRegisterAudioCallback();
+  {
+    CSingleLock lock(*g_application.getPlayerLock());
+    IPlayer *player = g_application.getPlayer();
+    if (player)
+      player->UnRegisterAudioCallback();
+  }
+
   if (Initialized())
   {
     CAddonDll<DllVisualisation, Visualisation, VIS_PROPS>::Stop();

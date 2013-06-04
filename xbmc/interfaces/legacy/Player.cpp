@@ -367,15 +367,17 @@ namespace XBMCAddon
     void Player::setSubtitles(const char* cLine)
     {
       TRACE;
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
-        int nStream = g_application.m_pPlayer->AddSubtitle(cLine);
+        int nStream = app_player->AddSubtitle(cLine);
         if(nStream >= 0)
         {
-          g_application.m_pPlayer->SetSubtitle(nStream);
-          g_application.m_pPlayer->SetSubtitleVisible(true);
+          app_player->SetSubtitle(nStream);
+          app_player->SetSubtitleVisible(true);
           g_settings.m_currentVideoSettings.m_SubtitleDelay = 0.0f;
-          g_application.m_pPlayer->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
+          app_player->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
         }
       }
     }
@@ -383,21 +385,25 @@ namespace XBMCAddon
     void Player::showSubtitles(bool bVisible)
     {
       TRACE;
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
         g_settings.m_currentVideoSettings.m_SubtitleOn = bVisible != 0;
-        g_application.m_pPlayer->SetSubtitleVisible(bVisible != 0);
+        app_player->SetSubtitleVisible(bVisible != 0);
       }
     }
 
     String Player::getSubtitles()
     {
       TRACE;
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
-        int i = g_application.m_pPlayer->GetSubtitle();
+        int i = app_player->GetSubtitle();
         CStdString strName;
-        g_application.m_pPlayer->GetSubtitleName(i, strName);
+        app_player->GetSubtitleName(i, strName);
 
         if (strName == "Unknown(Invalid)")
           strName = "";
@@ -411,24 +417,28 @@ namespace XBMCAddon
     {
       TRACE;
       CLog::Log(LOGWARNING,"'xbmc.Player().disableSubtitles()' is deprecated and will be removed in future releases, please use 'xbmc.Player().showSubtitles(false)' instead");
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
         g_settings.m_currentVideoSettings.m_SubtitleOn = false;
-        g_application.m_pPlayer->SetSubtitleVisible(false);
+        app_player->SetSubtitleVisible(false);
       }
     }
 
     std::vector<String>* Player::getAvailableSubtitleStreams()
     {
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
-        int subtitleCount = g_application.m_pPlayer->GetSubtitleCount();
+        int subtitleCount = app_player->GetSubtitleCount();
         std::vector<String>* ret = new std::vector<String>(subtitleCount);
         for (int iStream=0; iStream < subtitleCount; iStream++)
         {
           CStdString strName;
           CStdString FullLang;
-          g_application.m_pPlayer->GetSubtitleName(iStream, strName);
+          app_player->GetSubtitleName(iStream, strName);
           if (!g_LangCodeExpander.Lookup(FullLang, strName))
             FullLang = strName;
           (*ret)[iStream] = FullLang;
@@ -441,31 +451,35 @@ namespace XBMCAddon
 
     void Player::setSubtitleStream(int iStream)
     {
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
-        int streamCount = g_application.m_pPlayer->GetSubtitleCount();
+        int streamCount = app_player->GetSubtitleCount();
         if(iStream < streamCount)
         {
-          g_application.m_pPlayer->SetSubtitle(iStream);
-          g_application.m_pPlayer->SetSubtitleVisible(true);
+          app_player->SetSubtitle(iStream);
+          app_player->SetSubtitleVisible(true);
         }
       }
     }
 
     std::vector<String>* Player::getAvailableAudioStreams()
     {
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
-        int streamCount = g_application.m_pPlayer->GetAudioStreamCount();
+        int streamCount = app_player->GetAudioStreamCount();
         std::vector<String>* ret = new std::vector<String>(streamCount);
         for (int iStream=0; iStream < streamCount; iStream++)
         {  
           CStdString strName;
           CStdString FullLang;
-          g_application.m_pPlayer->GetAudioStreamLanguage(iStream, strName);
+          app_player->GetAudioStreamLanguage(iStream, strName);
           g_LangCodeExpander.Lookup(FullLang, strName);
           if (FullLang.IsEmpty())
-            g_application.m_pPlayer->GetAudioStreamName(iStream, FullLang);
+            app_player->GetAudioStreamName(iStream, FullLang);
           (*ret)[iStream] = FullLang;
         }
         return ret;
@@ -476,11 +490,13 @@ namespace XBMCAddon
 
     void Player::setAudioStream(int iStream)
     {
-      if (g_application.m_pPlayer)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
       {
-        int streamCount = g_application.m_pPlayer->GetAudioStreamCount();
+        int streamCount = app_player->GetAudioStreamCount();
         if(iStream < streamCount)
-          g_application.m_pPlayer->SetAudioStream(iStream);
+          app_player->SetAudioStream(iStream);
       }
     }  
   }

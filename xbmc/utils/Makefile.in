@@ -2,11 +2,6 @@ SRCS += AlarmClock.cpp
 SRCS += AliasShortcutUtils.cpp
 SRCS += Archive.cpp
 SRCS += AsyncFileCopy.cpp
-ifeq (@USE_LIBAMCODEC@,1)
-SRCS += AMLUtils.cpp
-else ifeq (@USE_AMLPLAYER@,1)
-SRCS += AMLUtils.cpp
-endif
 SRCS += AutoPtrHandle.cpp
 SRCS += Base64.cpp
 SRCS += BitstreamConverter.cpp
@@ -77,6 +72,12 @@ SRCS += XBMCTinyXML.cpp
 SRCS += XMLUtils.cpp
 SRCS += XMLVariantParser.cpp
 SRCS += XMLVariantWriter.cpp
+
+ifeq (@USE_LIBAMCODEC@,1)
+SRCS += AMLUtils.cpp
+else ifeq (@USE_AMLPLAYER@,1)
+SRCS += AMLUtils.cpp
+endif
 
 LIB   = utils.a
 

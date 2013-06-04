@@ -444,7 +444,7 @@ bool CEpgContainer::InterruptUpdate(void) const
   bool bReturn(false);
   CSingleLock lock(m_critSection);
   bReturn = g_application.m_bStop || m_bStop || m_bPreventUpdates;
-  const bool isVideoPlaying = g_application.m_pPlayer && g_application.m_pPlayer->IsPlaying();
+  const bool isVideoPlaying = g_application.IsPlaying();
   const bool isPVRPlaying = g_PVRManager.IsStarted() && g_PVRManager.IsPlaying();
   lock.Leave();
 
