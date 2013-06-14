@@ -47,10 +47,17 @@ namespace XFILE
     for (unsigned int i = 0; i < files.size(); i++)
     {
       CStdString file = files[i];
+      CStdString strNewPath;
+      int64_t dwSize = 0;
+
+      if (SplitPath(file, strNewPath, dwSize))
+        file = strNewPath;
+
       CFileItemPtr item(new CFileItem(file));
       //URIUtils::AddFileToFolder(folder, file, item->GetPath());
       item->SetPath(file);
       item->m_bIsFolder = false;
+      item->m_dwSize = dwSize;
       items.Add(item);
     }
     return true;
@@ -241,5 +248,27 @@ namespace XFILE
     }
     return true;
   }
+
+  bool CStackDirectory::SplitPath(const CStdString& strPath, CStdString& strNewPath, int64_t& dwSize)
+  {
+    // format is:
+    // length : filepath
+    CStdString path = strPath;
+
+    vector<CStdString> vecPaths;
+    StringUtils::SplitString(path, " : ", vecPaths);
+    if (vecPaths.size() != 2)
+      return false;
+
+    // because " : " is used as a seperator any ":" in the real paths are double escaped
+    for (vector<CStdString>::iterator itPath = vecPaths.begin(); itPath != vecPaths.end(); itPath++)
+      itPath->Replace("::", ":");
+
+    dwSize = atol(vecPaths[0].c_str());
+	strNewPath = vecPaths[1];
+
+    return true;
+  }
+
 }
 
