@@ -198,10 +198,10 @@ void CSoftAEStream::Initialize()
     m_ssrcData.end_of_input  = 0;
     // we must buffer the same amount as before but taking the source sample rate into account
     // there is no reason to decrease the buffer for upsampling
-    if( m_internalRatio < 1)
+    if (m_internalRatio < 1)
     {
-     m_waterLevel *= (1.0 / m_internalRatio);
-     m_refillBuffer = m_waterLevel;
+      m_waterLevel *= (1.0 / m_internalRatio);
+      m_refillBuffer = m_waterLevel;
     }
   }
 

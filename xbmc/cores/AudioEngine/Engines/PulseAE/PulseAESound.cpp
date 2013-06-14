@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -34,9 +34,11 @@ CPulseAESound::CPulseAESound(const std::string &filename, pa_context *context, p
   m_context        (context ),
   m_mainLoop       (mainLoop),
   m_stream         (NULL    ),
-  m_op             (NULL    )
+  m_op             (NULL    ),
+  m_maxVolume      (0.0f    ),
+  m_volume         (0.0f    ),
+  m_pulseName      (StringUtils::CreateUUID())
 {
-  m_pulseName = StringUtils::CreateUUID();
   m_wavLoader.Load(filename);
 }
 
