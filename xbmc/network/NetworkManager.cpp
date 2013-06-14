@@ -75,7 +75,7 @@ void CNetworkManager::Initialize()
 bool CNetworkManager::PumpNetworkEvents()
 {
 #if defined(TARGET_ANDROID)
-  if (!g_application.m_pPlayer)
+  if (!g_application.hasPlayer())
   {
     if (!m_timer && !IsConnected())
     {
