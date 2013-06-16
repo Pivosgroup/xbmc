@@ -184,12 +184,24 @@ public:
   bool PlayFile(const CFileItem& item, bool bRestart = false);
   void SaveFileState(bool bForeground = false);
   void UpdateFileState();
+
   void StopPlaying();
+
+  bool CanSeek() const;
+  void SeekPlaying(bool bPlus, bool bLargeStep);
+
+  bool CanPause() const;
+  bool IsPaused() const;
+  void PausePlaying();
+
+  bool CanRecord() const;
+  bool IsRecording() const;
+  void RecordPlaying(bool bOnOff);
+
   void Restart(bool bSamePosition = true);
   void DelayedPlayerRestart();
   void CheckDelayedPlayerRestart();
   bool IsPlaying() const;
-  bool IsPaused() const;
   bool IsPlayingAudio() const;
   bool IsPlayingVideo() const;
   bool IsPlayingFullScreenVideo() const;
@@ -283,7 +295,16 @@ public:
   MEDIA_DETECT::CDetectDVDMedia m_DetectDVDType;
 #endif
 
-  IPlayer* m_pPlayer;
+  bool              hasPlayer() const;
+  IPlayer*          getPlayer();
+  bool              setPlayerChannel(const PVR::CPVRChannel &channel);
+  CCriticalSection* getPlayerLock();
+
+protected:
+  IPlayer          *m_pPlayer;
+  CCriticalSection  m_player_lock;
+
+public:
 
 #ifdef HAS_WEB_SERVER
   CWebServer& m_WebServer;

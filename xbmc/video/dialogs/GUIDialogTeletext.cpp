@@ -62,7 +62,9 @@ bool CGUIDialogTeletext::OnMessage(CGUIMessage& message)
   if (message.GetMessage() == GUI_MSG_WINDOW_INIT)
   {
     /* Do not open if no teletext is available */
-    if (!g_application.m_pPlayer->GetTeletextCache())
+    CSingleLock lock(*g_application.getPlayerLock());
+    IPlayer *app_player = g_application.getPlayer();
+    if (app_player && !app_player->GetTeletextCache())
     {
       Close();
       CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(23049), "", 1500, false);

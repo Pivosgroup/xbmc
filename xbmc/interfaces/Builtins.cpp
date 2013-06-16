@@ -692,7 +692,7 @@ int CBuiltins::Execute(const CStdString& execString)
         if (g_application.GetPlaySpeed() != 1)
           g_application.SetPlaySpeed(1);
         else
-          g_application.m_pPlayer->Pause();
+          g_application.PausePlaying();
       }
     }
     else if (parameter.Equals("stop"))
@@ -701,7 +701,7 @@ int CBuiltins::Execute(const CStdString& execString)
     }
     else if (parameter.Equals("rewind") || parameter.Equals("forward"))
     {
-      if (g_application.IsPlaying() && !g_application.m_pPlayer->IsPaused())
+      if (!g_application.IsPaused())
       {
         int iPlaySpeed = g_application.GetPlaySpeed();
         if (parameter.Equals("rewind") && iPlaySpeed == 1) // Enables Rewinding
@@ -733,22 +733,22 @@ int CBuiltins::Execute(const CStdString& execString)
     else if (parameter.Equals("bigskipbackward"))
     {
       if (g_application.IsPlaying())
-        g_application.m_pPlayer->Seek(false, true);
+        g_application.SeekPlaying(false, true);
     }
     else if (parameter.Equals("bigskipforward"))
     {
       if (g_application.IsPlaying())
-        g_application.m_pPlayer->Seek(true, true);
+        g_application.SeekPlaying(true, true);
     }
     else if (parameter.Equals("smallskipbackward"))
     {
       if (g_application.IsPlaying())
-        g_application.m_pPlayer->Seek(false, false);
+        g_application.SeekPlaying(false, false);
     }
     else if (parameter.Equals("smallskipforward"))
     {
       if (g_application.IsPlaying())
-        g_application.m_pPlayer->Seek(true, false);
+        g_application.SeekPlaying(true, false);
     }
     else if (parameter.Left(14).Equals("seekpercentage"))
     {
@@ -771,13 +771,13 @@ int CBuiltins::Execute(const CStdString& execString)
     }
     else if( parameter.Equals("showvideomenu") )
     {
-      if( g_application.IsPlaying() && g_application.m_pPlayer )
-        g_application.m_pPlayer->OnAction(CAction(ACTION_SHOW_VIDEOMENU));
+      if( g_application.IsPlaying())
+        g_application.OnAction(CAction(ACTION_SHOW_VIDEOMENU));
     }
     else if( parameter.Equals("record") )
     {
-      if( g_application.IsPlaying() && g_application.m_pPlayer && g_application.m_pPlayer->CanRecord())
-        g_application.m_pPlayer->Record(!g_application.m_pPlayer->IsRecording());
+      if( g_application.IsPlaying() && g_application.CanRecord())
+        g_application.RecordPlaying(!g_application.IsRecording());
     }
     else if (parameter.Left(9).Equals("partymode"))
     {

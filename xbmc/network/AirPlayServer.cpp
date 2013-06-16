@@ -672,7 +672,7 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
       }
       else if (rate == 0)
       {
-        if (g_application.m_pPlayer && g_application.m_pPlayer->IsPlaying() && !g_application.m_pPlayer->IsPaused())
+        if (g_application.IsPlaying() && !g_application.IsPaused())
         {
           CApplicationMessenger::Get().MediaPause();
           ComposeReverseEvent(reverseHeader, reverseBody, sessionId, EVENT_PAUSED);
@@ -680,7 +680,7 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
       }
       else
       {
-        if (g_application.m_pPlayer && g_application.m_pPlayer->IsPlaying() && g_application.m_pPlayer->IsPaused())
+        if (g_application.IsPlaying() && g_application.IsPaused())
         {
           CApplicationMessenger::Get().MediaPause();
           ComposeReverseEvent(reverseHeader, reverseBody, sessionId, EVENT_PLAYING);
@@ -824,10 +824,12 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
     {
       CLog::Log(LOGDEBUG, "AIRPLAY: got GET request %s", uri.c_str());
       
-      if (g_application.m_pPlayer && g_application.m_pPlayer->GetTotalTime())
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player && app_player->GetTotalTime())
       {
-        float position = ((float) g_application.m_pPlayer->GetTime()) / 1000;
-        responseBody.Format("duration: %d\r\nposition: %f", g_application.m_pPlayer->GetTotalTime() / 1000, position);
+        float position = ((float) app_player->GetTime()) / 1000;
+        responseBody.Format("duration: %d\r\nposition: %f", app_player->GetTotalTime() / 1000, position);
       }
       else 
       {
@@ -837,12 +839,16 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
     else
     {
       const char* found = strstr(queryString.c_str(), "position=");
-      
-      if (found && g_application.m_pPlayer)
+      if (found)
       {
-        int64_t position = (int64_t) (atof(found + strlen("position=")) * 1000.0);
-        g_application.m_pPlayer->SeekTime(position);
-        CLog::Log(LOGDEBUG, "AIRPLAY: got POST request %s with pos %"PRId64, uri.c_str(), position);
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (app_player)
+        {
+          int64_t position = (int64_t) (atof(found + strlen("position=")) * 1000.0);
+          app_player->SeekTime(position);
+          CLog::Log(LOGDEBUG, "AIRPLAY: got POST request %s with pos %"PRId64, uri.c_str(), position);
+        }
       }
     }
   }
@@ -922,20 +928,22 @@ int CAirPlayServer::CTCPClient::ProcessRequest( CStdString& responseHeader,
     {
       status = AIRPLAY_STATUS_NEED_AUTH;
     }
-    else if (g_application.m_pPlayer)
+    else if (g_application.hasPlayer())
     {
-      if (g_application.m_pPlayer->GetTotalTime())
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player && app_player->GetTotalTime())
       {
-        position = ((float) g_application.m_pPlayer->GetTime()) / 1000;
-        duration = ((float) g_application.m_pPlayer->GetTotalTime()) / 1000;
-        playing = g_application.m_pPlayer ? !g_application.m_pPlayer->IsPaused() : false;
-        cachePosition = position + (duration * g_application.m_pPlayer->GetCachePercentage() / 100.0f);
+        position = ((float) app_player->GetTime()) / 1000;
+        duration = ((float) app_player->GetTotalTime()) / 1000;
+        playing = !app_player->IsPaused();
+        cachePosition = position + (duration * app_player->GetCachePercentage() / 100.0f);
       }
 
       responseBody.Format(PLAYBACK_INFO, duration, cachePosition, position, (playing ? 1 : 0), duration);
       responseHeader = "Content-Type: text/x-apple-plist+xml\r\n";
 
-      if (g_application.m_pPlayer->IsCaching())
+      if (app_player && app_player->IsCaching())
       {
         ComposeReverseEvent(reverseHeader, reverseBody, sessionId, EVENT_LOADING);
       }

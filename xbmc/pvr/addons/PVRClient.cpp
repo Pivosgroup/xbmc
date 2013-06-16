@@ -878,9 +878,11 @@ bool CPVRClient::SeekTime(int time, bool backwards, double *startpts)
 {
   if (IsPlaying())
   {
+    CSingleLock lock(*g_application.getPlayerLock());
+    IPlayer *app_player = g_application.getPlayer();
     // player time is added to time here, which is taken from the epg
     // we can either substract it again here, or add special pvr cases in players
-    int iChangeTime = time - (int)g_application.m_pPlayer->GetTime();
+    int iChangeTime = time - (int)app_player->GetTime();
     try { return m_pStruct->SeekTime(iChangeTime, backwards, startpts); }
     catch (exception &e) { LogException(e, "SeekTime()"); }
   }

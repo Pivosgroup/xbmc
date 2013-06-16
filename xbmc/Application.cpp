@@ -1931,11 +1931,11 @@ void CApplication::LoadSkin(const SkinPtr& skin)
 
   bool bPreviousPlayingState=false;
   bool bPreviousRenderingState=false;
-  if (g_application.m_pPlayer && g_application.IsPlayingVideo())
+  if (m_pPlayer && g_application.IsPlayingVideo())
   {
-    bPreviousPlayingState = !g_application.m_pPlayer->IsPaused();
+    bPreviousPlayingState = !m_pPlayer->IsPaused();
     if (bPreviousPlayingState)
-      g_application.m_pPlayer->Pause();
+      m_pPlayer->Pause();
 #ifdef HAS_VIDEO_PLAYBACK
     if (!g_renderManager.Paused())
     {
@@ -2040,10 +2040,10 @@ void CApplication::LoadSkin(const SkinPtr& skin)
     }
   }
 
-  if (g_application.m_pPlayer && g_application.IsPlayingVideo())
+  if (m_pPlayer && g_application.IsPlayingVideo())
   {
     if (bPreviousPlayingState)
-      g_application.m_pPlayer->Pause();
+      m_pPlayer->Pause();
     if (bPreviousRenderingState)
       g_windowManager.ActivateWindow(WINDOW_FULLSCREEN_VIDEO);
   }
@@ -2435,7 +2435,7 @@ bool CApplication::OnKey(const CKey& key)
   if (iWin == WINDOW_FULLSCREEN_VIDEO)
   {
     // current active window is full screen video.
-    if (g_application.m_pPlayer && g_application.m_pPlayer->IsInMenu())
+    if (m_pPlayer && m_pPlayer->IsInMenu())
     {
       // if player is in some sort of menu, (ie DVDMENU) map buttons differently
       action = CButtonTranslator::GetInstance().GetAction(WINDOW_VIDEO_MENU, key);
@@ -2894,6 +2894,15 @@ bool CApplication::OnAction(const CAction &action)
       g_windowManager.ActivateWindow(WINDOW_MUSIC_PLAYLIST);
     return true;
   }
+  if (action.GetID() == ACTION_SHOW_VIDEOMENU)
+  {
+    CSingleLock lock(m_player_lock);
+    if (m_pPlayer)
+      return m_pPlayer->OnAction(CAction(action));
+    else
+      return false;
+  }
+
   return false;
 }
 
@@ -3311,7 +3320,7 @@ int CApplication::GetActiveWindowID(void)
   if (iWin == WINDOW_FULLSCREEN_VIDEO)
   {
     // check if we're in a DVD menu
-    if(g_application.m_pPlayer && g_application.m_pPlayer->IsInMenu())
+    if(m_pPlayer && m_pPlayer->IsInMenu())
       iWin = WINDOW_VIDEO_MENU;
     // check for LiveTV and switch to it's virtual window
     else if (g_PVRManager.IsStarted() && g_application.CurrentFileItem().HasPVRChannelInfoTag())
@@ -3555,6 +3564,7 @@ void CApplication::Stop(int exitCode)
     if (m_pPlayer)
     {
       CLog::Log(LOGNOTICE, "stop player");
+      CSingleLock lock(m_player_lock);
       delete m_pPlayer;
       m_pPlayer = NULL;
     }
@@ -4082,6 +4092,7 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
 #endif            
             )) )
     {
+      CSingleLock lock(m_player_lock);
       delete m_pPlayer;
       m_pPlayer = NULL;
     }
@@ -4089,6 +4100,7 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
 
   if (!m_pPlayer)
   {
+    CSingleLock lock(m_player_lock);
     m_eCurrentPlayer = eNewCore;
     m_pPlayer = CPlayerCoreFactory::CreatePlayer(eNewCore, *this);
   }
@@ -4339,6 +4351,7 @@ void CApplication::OnPlayBackSeekChapter(int iChapter)
 
 bool CApplication::IsPlaying() const
 {
+  CSingleLock lock(m_player_lock);
   if (!m_pPlayer)
     return false;
   if (!m_pPlayer->IsPlaying())
@@ -4346,17 +4359,9 @@ bool CApplication::IsPlaying() const
   return true;
 }
 
-bool CApplication::IsPaused() const
-{
-  if (!m_pPlayer)
-    return false;
-  if (!m_pPlayer->IsPlaying())
-    return false;
-  return m_pPlayer->IsPaused();
-}
-
 bool CApplication::IsPlayingAudio() const
 {
+  CSingleLock lock(m_player_lock);
   if (!m_pPlayer)
     return false;
   if (!m_pPlayer->IsPlaying())
@@ -4370,6 +4375,7 @@ bool CApplication::IsPlayingAudio() const
 
 bool CApplication::IsPlayingVideo() const
 {
+  CSingleLock lock(m_player_lock);
   if (!m_pPlayer)
     return false;
   if (!m_pPlayer->IsPlaying())
@@ -4505,6 +4511,70 @@ void CApplication::StopPlaying()
 
     g_partyModeManager.Disable();
   }
+}
+
+bool CApplication::CanSeek() const
+{
+  CSingleLock lock(m_player_lock);
+  if (m_pPlayer)
+    return false;
+  return m_pPlayer->CanSeek();
+}
+void CApplication::SeekPlaying(bool bPlus, bool bLargeStep)
+{
+  CSingleLock lock(m_player_lock);
+  if (m_pPlayer)
+    m_pPlayer->Seek(bPlus, bLargeStep);
+}
+
+bool CApplication::CanPause() const
+{
+  CSingleLock lock(m_player_lock);
+  if (!m_pPlayer)
+    return false;
+  return m_pPlayer->CanPause();
+}
+
+bool CApplication::IsPaused() const
+{
+  CSingleLock lock(m_player_lock);
+  if (!m_pPlayer)
+    return false;
+  if (!m_pPlayer->IsPlaying())
+    return false;
+  return m_pPlayer->IsPaused();
+}
+
+void CApplication::PausePlaying()
+{
+  CSingleLock lock(m_player_lock);
+  if (m_pPlayer)
+    m_pPlayer->Pause();
+}
+
+bool CApplication::CanRecord() const
+{
+  CSingleLock lock(m_player_lock);
+  if (m_pPlayer)
+    return m_pPlayer->CanRecord();
+  else
+    return false;
+}
+bool CApplication::IsRecording() const
+{
+  CSingleLock lock(m_player_lock);
+  if (!m_pPlayer)
+    return false;
+  if (!m_pPlayer->IsPlaying())
+    return false;
+  return m_pPlayer->IsRecording();
+}
+
+void CApplication::RecordPlaying(bool bOnOff)
+{
+  CSingleLock lock(m_player_lock);
+  if (m_pPlayer)
+    m_pPlayer->Record(bOnOff);
 }
 
 void CApplication::ResetSystemIdleTimer()
@@ -4963,8 +5033,11 @@ bool CApplication::OnMessage(CGUIMessage& message)
         if (CLastFmManager::GetInstance()->IsRadioEnabled())
           CLastFmManager::GetInstance()->StopRadio();
 
-        delete m_pPlayer;
-        m_pPlayer = 0;
+        {
+          CSingleLock lock(m_player_lock);
+          delete m_pPlayer;
+          m_pPlayer = 0;
+        }
 
         // Reset playspeed
         m_iPlaySpeed = 1;
@@ -5884,6 +5957,28 @@ void CApplication::SetRenderGUI(bool renderGUI)
   if (renderGUI && ! m_renderGUI)
     g_windowManager.MarkDirty();
   m_renderGUI = renderGUI;
+}
+
+bool CApplication::hasPlayer() const
+{
+  CSingleLock lock(m_player_lock);
+  return m_pPlayer != NULL;
+}
+IPlayer* CApplication::getPlayer()
+{
+  CSingleLock lock(m_player_lock);
+  return m_pPlayer;
+}
+bool CApplication::setPlayerChannel(const PVR::CPVRChannel &channel)
+{
+  CSingleLock lock(m_player_lock);
+  if (!m_pPlayer)
+    return false;
+  return m_pPlayer->SwitchChannel(channel);
+}
+CCriticalSection* CApplication::getPlayerLock()
+{
+  return &m_player_lock;
 }
 
 CNetworkManager& CApplication::getNetworkManager()

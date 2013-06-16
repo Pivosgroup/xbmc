@@ -342,7 +342,7 @@ void CGraphicContext::SetVideoResolution(RESOLUTION res, bool forceUpdate)
     int delay = g_guiSettings.GetInt("videoplayer.pauseafterrefreshchange");
     if (delay > 0 && g_guiSettings.GetInt("videoplayer.adjustrefreshrate") != ADJUST_REFRESHRATE_OFF && g_application.IsPlayingVideo() && !g_application.IsPaused())
     {
-      g_application.m_pPlayer->Pause();
+      g_application.PausePlaying();
       ThreadMessage msg = {TMSG_MEDIA_UNPAUSE};
       CDelayedMessage* pauseMessage = new CDelayedMessage(msg, delay * 100);
       pauseMessage->Create(true);
