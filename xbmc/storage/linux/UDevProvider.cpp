@@ -146,22 +146,22 @@ void CUDevProvider::GetDisks(VECSOURCES& disks, bool removable)
     }
 
     // look for usb devices on the usb bus or mounted on /media/usbX (sdcards)
-    const char *bus = udev_device_get_property_value(device, "ID_BUS");
-    if (removable  &&
-      ((bus        && strstr(bus, "usb")) ||
-       (mountpoint && strstr(mountpoint, "usb"))))
-    {
-      const char *label = udev_device_get_property_value(device, "ID_FS_LABEL");
-      if (!label)
-        label = URIUtils::GetFileName(mountpoint);
+    //const char *bus = udev_device_get_property_value(device, "ID_BUS");
+    //if (removable  &&
+    //  ((bus        && strstr(bus, "usb")) ||
+    //   (mountpoint && strstr(mountpoint, "usb"))))
+    //{
+    //  const char *label = udev_device_get_property_value(device, "ID_FS_LABEL");
+    //  if (!label)
+    //    label = URIUtils::GetFileName(mountpoint);
 
-      CMediaSource share;
-      share.strName  = label;
-      share.strPath  = mountpoint;
-      share.m_ignore = true;
-      share.m_iDriveType = CMediaSource::SOURCE_TYPE_REMOVABLE;
-      AddOrReplace(disks, share);
-    }
+    //  CMediaSource share;
+    //  share.strName  = label;
+    //  share.strPath  = mountpoint;
+    //  share.m_ignore = true;
+    //  share.m_iDriveType = CMediaSource::SOURCE_TYPE_REMOVABLE;
+    //  AddOrReplace(disks, share);
+    //}
     udev_device_unref(device);
   }
   udev_enumerate_unref(u_enum);

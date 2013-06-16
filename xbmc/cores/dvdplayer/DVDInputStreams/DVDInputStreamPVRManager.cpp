@@ -86,7 +86,6 @@ bool CDVDInputStreamPVRManager::Open(const char* strFile, const std::string& con
   m_pRecordable = ((CPVRFile*)m_pFile)->GetRecordable();
 
   CURL url(strFile);
-  if (!CDVDInputStream::Open(strFile, content)) return false;
   if (!m_pFile->Open(url))
   {
     delete m_pFile;
@@ -95,6 +94,9 @@ bool CDVDInputStreamPVRManager::Open(const char* strFile, const std::string& con
     m_pRecordable = NULL;
     return false;
   }
+  CStdString pathFile = strFile;
+  CStdString streamUrl = CPVRFile::TranslatePVRFilename(pathFile);
+  if (!CDVDInputStream::Open(streamUrl.c_str(), content)) return false;
   m_eof = false;
 
   /*
