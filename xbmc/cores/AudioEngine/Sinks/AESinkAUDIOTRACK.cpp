@@ -416,7 +416,7 @@ void CAESinkAUDIOTRACK::Process()
       // Audiotrack will playout any written contents.
       jenv->CallVoidMethod(joAudioTrack, jmStop);
       // sleep this audio thread, we will get woken when we have audio data.
-      m_wake.WaitMSec(DEFAULT_AUDIO_OFFSET*1000);
+      m_wake.WaitMSec(250);
     }
   }
 
