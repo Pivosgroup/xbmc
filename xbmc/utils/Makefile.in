@@ -2,6 +2,14 @@ SRCS += AlarmClock.cpp
 SRCS += AliasShortcutUtils.cpp
 SRCS += Archive.cpp
 SRCS += AsyncFileCopy.cpp
+<<<<<<< HEAD
+=======
+ifeq (@USE_LIBAMCODEC@,1)
+SRCS += AMLUtils.cpp
+else ifeq (@USE_AMLPLAYER@,1)
+SRCS += AMLUtils.cpp
+endif
+>>>>>>> xbmc-pivos/master
 SRCS += AutoPtrHandle.cpp
 SRCS += Base64.cpp
 SRCS += BitstreamConverter.cpp
@@ -73,12 +81,15 @@ SRCS += XMLUtils.cpp
 SRCS += XMLVariantParser.cpp
 SRCS += XMLVariantWriter.cpp
 
+<<<<<<< HEAD
 ifeq (@USE_LIBAMCODEC@,1)
 SRCS += AMLUtils.cpp
 else ifeq (@USE_AMLPLAYER@,1)
 SRCS += AMLUtils.cpp
 endif
 
+=======
+>>>>>>> xbmc-pivos/master
 LIB   = utils.a
 
 include @abs_top_srcdir@/Makefile.include

@@ -18,6 +18,7 @@
  *
  */
 
+#include "config.h"
 #include <limits.h>
 #if defined(TARGET_ANDROID)
 #include <unistd.h>
@@ -71,10 +72,48 @@ void CThread::SetThreadInfo()
   m_ThreadOpaque.LwpId = syscall(SYS_gettid);
 #endif
 
+<<<<<<< HEAD
   // start thread with nice level of appication
   int appNice = getpriority(PRIO_PROCESS, getpid());
   if (setpriority(PRIO_PROCESS, m_ThreadOpaque.LwpId, appNice) != 0)
     if (logger) logger->Log(LOGERROR, "%s: error %s", __FUNCTION__, strerror(errno));
+=======
+#if defined(HAVE_PTHREAD_SETNAME_NP)
+#ifdef TARGET_DARWIN
+#if(__MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 30200)
+  pthread_setname_np(m_ThreadName.c_str());
+#endif
+#else
+  pthread_setname_np(m_ThreadId, m_ThreadName.c_str());
+#endif
+#elif defined(HAVE_PTHREAD_SET_NAME_NP)
+  pthread_set_name_np(m_ThreadId, m_ThreadName.c_str());
+#endif
+    
+#ifdef RLIMIT_NICE
+  // get user max prio
+  struct rlimit limit;
+  int userMaxPrio;
+  if (getrlimit(RLIMIT_NICE, &limit) == 0)
+  {
+    userMaxPrio = limit.rlim_cur - 20;
+    if (userMaxPrio < 0)
+      userMaxPrio = 0;
+  }
+  else
+    userMaxPrio = 0;
+
+  // if the user does not have an entry in limits.conf the following
+  // call will fail
+  if (userMaxPrio > 0)
+  {
+    // start thread with nice level of appication
+    int appNice = getpriority(PRIO_PROCESS, getpid());
+    if (setpriority(PRIO_PROCESS, m_ThreadOpaque.LwpId, appNice) != 0)
+      if (logger) logger->Log(LOGERROR, "%s: error %s", __FUNCTION__, strerror(errno));
+  }
+#endif
+>>>>>>> xbmc-pivos/master
 }
 
 ThreadIdentifier CThread::GetCurrentThreadId()

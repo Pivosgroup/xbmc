@@ -144,7 +144,7 @@ IAESink *CSoftAE::GetSink(AEAudioFormat &newFormat, bool passthrough, std::strin
 }
 
 /* this method MUST be called while holding m_streamLock */
-inline CSoftAEStream *CSoftAE::GetMasterStream()
+CSoftAEStream *CSoftAE::GetMasterStream()
 {
   /* remove any destroyed streams first */
   for (StreamList::iterator itt = m_streams.begin(); itt != m_streams.end();)
@@ -620,7 +620,7 @@ void CSoftAE::VerifySoundDevice(std::string& device, bool passthrough)
   device = firstDevice;
 }
 
-inline void CSoftAE::GetDeviceFriendlyName(std::string &device)
+void CSoftAE::GetDeviceFriendlyName(std::string &device)
 {
   m_deviceFriendlyName = "Device not found";
   /* Match the device and find its friendly name */
@@ -987,6 +987,10 @@ bool CSoftAE::Suspend()
   streamLock.Leave();
   #if defined(TARGET_LINUX)
   /*workaround sinks not playing sound after resume */
+<<<<<<< HEAD
+=======
+    StopAllSounds();
+>>>>>>> xbmc-pivos/master
     bool ret = true;
     if(m_sink)
     {
@@ -1195,11 +1199,12 @@ bool CSoftAE::FinalizeSamples(float *buffer, unsigned int samples, bool hasAudio
 
   /* check if we need to clamp */
   bool clamp = false;
-  float *fbuffer = buffer;
+  float clamp_value, *fbuffer = buffer;
   for (unsigned int i = 0; i < samples; i++, fbuffer++)
   {
     if (*fbuffer < -1.0f || *fbuffer > 1.0f)
     {
+      clamp_value = *fbuffer;
       clamp = true;
       break;
     }
@@ -1209,7 +1214,7 @@ bool CSoftAE::FinalizeSamples(float *buffer, unsigned int samples, bool hasAudio
   if (!clamp)
     return true;
 
-  CLog::Log(LOGDEBUG, "CSoftAE::FinalizeSamples - Clamping buffer of %d samples", samples);
+  CLog::Log(LOGDEBUG, "CSoftAE::FinalizeSamples - Clamping buffer of %d samples, clamp value(%f)", samples, clamp_value);
   CAEUtil::ClampArray(buffer, samples);
   return true;
 }
@@ -1453,7 +1458,7 @@ unsigned int CSoftAE::RunStreamStage(unsigned int channelCount, void *out, bool 
   return mixed;
 }
 
-inline void CSoftAE::ResumeSlaveStreams(const StreamList &streams)
+void CSoftAE::ResumeSlaveStreams(const StreamList &streams)
 {
   if (streams.empty())
     return;
@@ -1468,7 +1473,7 @@ inline void CSoftAE::ResumeSlaveStreams(const StreamList &streams)
   }
 }
 
-inline void CSoftAE::RemoveStream(StreamList &streams, CSoftAEStream *stream)
+void CSoftAE::RemoveStream(StreamList &streams, CSoftAEStream *stream)
 {
   StreamList::iterator f = std::find(streams.begin(), streams.end(), stream);
   if (f != streams.end())
@@ -1478,7 +1483,7 @@ inline void CSoftAE::RemoveStream(StreamList &streams, CSoftAEStream *stream)
     m_streamsPlaying = !m_playingStreams.empty();
 }
 
-inline void CSoftAE::ProcessSuspend()
+void CSoftAE::ProcessSuspend()
 {
   unsigned int curSystemClock = 0;
 #if defined(TARGET_WINDOWS)
@@ -1526,7 +1531,8 @@ inline void CSoftAE::ProcessSuspend()
       m_saveSuspend.Set();
 
     /* idle for platform-defined time */
-    m_wake.WaitMSec(SOFTAE_IDLE_WAIT_MSEC);
+    if (m_playingStreams.empty() && m_playing_sounds.empty())
+      m_wake.WaitMSec(SOFTAE_IDLE_WAIT_MSEC);
 
     /* check if we need to resume for stream or sound or somebody wants to open us
      * the suspend checks are only there to:

@@ -1576,6 +1576,7 @@ bool CApplication::StartAirplayServer()
     {
       CAirPlayServer::SetCredentials(usePassword, password);
       std::vector<std::pair<std::string, std::string> > txt;
+<<<<<<< HEAD
 
       std::string mac_address(m_network.GetDefaultConnectionMacAddress());
       if (mac_address.empty())
@@ -1585,6 +1586,15 @@ bool CApplication::StartAirplayServer()
       txt.push_back(std::make_pair("model", "Xbmc,1"));
       txt.push_back(std::make_pair("srcvers", AIRPLAY_SERVER_VERSION_STR));
 
+=======
+      std::string mac = m_network.GetDefaultConnectionMacAddress();                                                                                                              
+      if (mac.empty())                                                                                                                                               
+        mac = "FF:FF:FF:FF:FF:F2";
+      txt.push_back(std::make_pair("deviceid", mac));
+      txt.push_back(std::make_pair("features", "0x77"));
+      txt.push_back(std::make_pair("model", "Xbmc,1"));
+      txt.push_back(std::make_pair("srcvers", AIRPLAY_SERVER_VERSION_STR));
+>>>>>>> xbmc-pivos/master
       CZeroconf::GetInstance()->PublishService("servers.airplay", "_airplay._tcp", g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME), listenPort, txt);
       ret = true;
     }
@@ -2364,8 +2374,6 @@ void CApplication::Render()
     g_graphicsContext.Flip(dirtyRegions);
   CTimeUtils::UpdateFrameTime(flip);
 
-  g_TextureManager.FreeUnusedTextures();
-
   g_renderManager.UpdateResolution();
   g_renderManager.ManageCaptures();
 
@@ -2829,11 +2837,15 @@ bool CApplication::OnAction(const CAction &action)
 
   if (action.GetID() == ACTION_TOGGLE_DIGITAL_ANALOG)
   {
-    switch(g_guiSettings.GetInt("audiooutput.mode"))
+    // we are only allowed to SetInt to a value supported in GUISettings, so we keep trying until it sticks
+    int mode = g_guiSettings.GetInt("audiooutput.mode");
+    for (int i = 0; i < AUDIO_COUNT; i++)
     {
-      case AUDIO_ANALOG: g_guiSettings.SetInt("audiooutput.mode", AUDIO_IEC958); break;
-      case AUDIO_IEC958: g_guiSettings.SetInt("audiooutput.mode", AUDIO_HDMI  ); break;
-      case AUDIO_HDMI  : g_guiSettings.SetInt("audiooutput.mode", AUDIO_ANALOG); break;
+      if (++mode == AUDIO_COUNT)
+        mode = 0;
+      g_guiSettings.SetInt("audiooutput.mode", mode);
+      if (g_guiSettings.GetInt("audiooutput.mode") == mode)
+         break;
     }
 
     g_application.Restart();
@@ -4149,24 +4161,6 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
       if( options.fullscreen && g_renderManager.IsStarted()
        && g_windowManager.GetActiveWindow() != WINDOW_FULLSCREEN_VIDEO )
        SwitchToFullScreen();
-
-      if (!item.IsDVDImage() && !item.IsDVDFile())
-      {
-        CVideoInfoTag *details = m_itemCurrentFile->GetVideoInfoTag();
-        // Save information about the stream if we currently have no data
-        if (!details->HasStreamDetails() ||
-             details->m_streamDetails.GetVideoDuration() <= 0)
-        {
-          if (m_pPlayer->GetStreamDetails(details->m_streamDetails) && details->HasStreamDetails())
-          {
-            CVideoDatabase dbs;
-            dbs.Open();
-            dbs.SetStreamDetailsForFileId(details->m_streamDetails, details->m_iFileId);
-            dbs.Close();
-            CUtil::DeleteVideoDatabaseDirectoryCache();
-          }
-        }
-      }
     }
 #endif
 
@@ -4450,13 +4444,18 @@ void CApplication::UpdateFileState()
         m_progressTrackingPlayCountUpdate = true;
       }
 
-      if (m_progressTrackingItem->IsVideo())
+      // Check whether we're *really* playing video else we may race when getting eg. stream details
+      if (IsPlayingVideo())
       {
-        if ((m_progressTrackingItem->IsDVDImage() || m_progressTrackingItem->IsDVDFile()) && m_pPlayer->GetTotalTime() > 15*60*1000)
+        // Special case for DVDs: Only extract streamdetails if title length > 15m. Should yield more correct info
+        if (!(m_progressTrackingItem->IsDVDImage() || m_progressTrackingItem->IsDVDFile()) || m_pPlayer->GetTotalTime() > 15*60*1000)
         {
-          m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails.Reset();
-          m_pPlayer->GetStreamDetails(m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails);
+          CStreamDetails details;
+          // Update with stream details from player, if any
+          if (m_pPlayer->GetStreamDetails(details))
+            m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails = details;
         }
+
         // Update bookmark for save
         m_progressTrackingVideoResumeBookmark.player = CPlayerCoreFactory::GetPlayerName(m_eCurrentPlayer);
         m_progressTrackingVideoResumeBookmark.playerState = m_pPlayer->GetPlayerState();
@@ -4978,11 +4977,22 @@ bool CApplication::OnMessage(CGUIMessage& message)
       }
 #endif
 
-      // ok - send the file to the player if it wants it
-      if (m_pPlayer && m_pPlayer->QueueNextFile(file))
-      { // player wants the next file
-        m_nextPlaylistItem = iNext;
+      // ok - send the file to the player, if it accepts it
+      if (m_pPlayer)
+      {
+        if (m_pPlayer->QueueNextFile(file))
+        {
+          // player accepted the next file
+          m_nextPlaylistItem = iNext;
+        }
+        else
+        {
+          /* Player didn't accept next file: *ALWAYS* advance playlist in this case so the player can
+             queue the next (if it wants to) and it doesn't keep looping on this song */
+          g_playlistPlayer.SetCurrentSong(iNext);
+        }
       }
+
       return true;
     }
     break;
@@ -5251,6 +5261,8 @@ void CApplication::ProcessSlow()
 
   if (!IsPlayingVideo())
     g_largeTextureManager.CleanupUnusedImages();
+
+  g_TextureManager.FreeUnusedTextures();
 
 #ifdef HAS_DVD_DRIVE
   // checks whats in the DVD drive and tries to autostart the content (xbox games, dvd, cdda, avi files...)
@@ -5957,6 +5969,7 @@ void CApplication::SetRenderGUI(bool renderGUI)
   m_renderGUI = renderGUI;
 }
 
+<<<<<<< HEAD
 bool CApplication::hasPlayer() const
 {
   CSingleLock lock(m_player_lock);
@@ -5986,6 +5999,15 @@ CNetworkManager& CApplication::getNetworkManager()
 
 CKeyringManager& CApplication::getKeyringManager()
 {
+=======
+CNetworkManager& CApplication::getNetworkManager()
+{
+  return m_network;
+}
+
+CKeyringManager& CApplication::getKeyringManager()
+{
+>>>>>>> xbmc-pivos/master
   return m_keyringManager;
 }
 #ifdef HAS_PERFORMANCE_SAMPLE

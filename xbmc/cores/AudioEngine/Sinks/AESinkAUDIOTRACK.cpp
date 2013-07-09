@@ -74,6 +74,7 @@ CAESinkAUDIOTRACK::CAESinkAUDIOTRACK()
 {
   m_sinkbuffer = NULL;
   m_alignedS16LE = NULL;
+<<<<<<< HEAD
   m_volume_changed = false;
   m_min_frames = 0;
   m_sink_frameSize = 0;
@@ -83,6 +84,8 @@ CAESinkAUDIOTRACK::CAESinkAUDIOTRACK()
   m_audiotrackbuffer_sec = 0.0;
   m_audiotrack_empty_sec = 0.0;
   m_volume = 0.0;
+=======
+>>>>>>> xbmc-pivos/master
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   aml_cpufreq_limit(true);
 #endif
@@ -186,7 +189,11 @@ double CAESinkAUDIOTRACK::GetDelay()
   sinkbuffer_seconds_to_empty += m_audiotrack_empty_sec;
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   if (sinkbuffer_seconds_to_empty > 0.0)
+<<<<<<< HEAD
     sinkbuffer_seconds_to_empty += DEFAULT_AUDIO_OFFSET;
+=======
+    sinkbuffer_seconds_to_empty += 0.250;
+>>>>>>> xbmc-pivos/master
 #endif
   return sinkbuffer_seconds_to_empty;
 }
@@ -200,7 +207,11 @@ double CAESinkAUDIOTRACK::GetCacheTime()
   sinkbuffer_seconds_to_empty += m_audiotrack_empty_sec;
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   if (sinkbuffer_seconds_to_empty > 0.0)
+<<<<<<< HEAD
     sinkbuffer_seconds_to_empty += DEFAULT_AUDIO_OFFSET;
+=======
+    sinkbuffer_seconds_to_empty += 0.250;
+>>>>>>> xbmc-pivos/master
 #endif
   return sinkbuffer_seconds_to_empty;
 }
@@ -265,7 +276,11 @@ void  CAESinkAUDIOTRACK::SetVolume(float scale)
   float gain = CAEUtil::ScaleToGain(scale);
   m_volume = CAEUtil::GainToPercent(gain);
   if (!m_passthrough)
+<<<<<<< HEAD
   	m_volume_changed = true;
+=======
+    m_volume_changed = true;
+>>>>>>> xbmc-pivos/master
 }
 
 void CAESinkAUDIOTRACK::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
@@ -336,10 +351,17 @@ void CAESinkAUDIOTRACK::Process()
     GetStaticIntField(jenv, "AudioTrack", "MODE_STREAM"));
 
   // Set the initial volume
+<<<<<<< HEAD
   float volume = 1.0;
   if (!m_passthrough)
     volume = m_volume;
   CXBMCApp::SetSystemVolume(jenv, volume);
+=======
+  jfloat jvolume = 1.0;
+  if (!m_passthrough)
+    jvolume = m_volume;
+  CXBMCApp::SetSystemVolume(jenv, jvolume);
+>>>>>>> xbmc-pivos/master
 
   // The AudioTrack object has been created and waiting to play,
   m_inited.Set();

@@ -231,7 +231,14 @@ JSONRPC_STATUS CPlayerOperations::PlayPause(const CStdString &method, ITransport
         CBuiltins::Execute("playercontrol(play)");
       else
       {
-        if (parameterObject["play"].asBoolean() == g_application.IsPaused())
+        if (parameterObject["play"].asBoolean())
+        {
+          if (g_application.IsPaused())
+            CApplicationMessenger::Get().MediaPause();
+          else if (g_application.GetPlaySpeed() != 1)
+            g_application.SetPlaySpeed(1);
+        }
+        else if (!g_application.IsPaused())
           CApplicationMessenger::Get().MediaPause();
       }
       result["speed"] = g_application.IsPaused() ? 0 : g_application.GetPlaySpeed();
@@ -262,7 +269,7 @@ JSONRPC_STATUS CPlayerOperations::Stop(const CStdString &method, ITransportLayer
   {
     case Video:
     case Audio:
-      CApplicationMessenger::Get().MediaStop(true, parameterObject["playerid"].asInteger());
+      CApplicationMessenger::Get().MediaStop(true, (int)parameterObject["playerid"].asInteger());
       return ACK;
 
     case Picture:
@@ -1359,6 +1366,7 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
           IPlayer *app_player = g_application.getPlayer();
           if (app_player)
           {
+<<<<<<< HEAD
             result = CVariant(CVariant::VariantTypeObject);
             int index = app_player->GetAudioStream();
             if (index >= 0)
@@ -1377,6 +1385,20 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
           }
           else
             result = CVariant(CVariant::VariantTypeNull);
+=======
+            result["index"] = index;
+            CStdString value;
+            g_application.m_pPlayer->GetAudioStreamName(index, value);
+            result["name"] = value;
+            value.Empty();
+            g_application.m_pPlayer->GetAudioStreamLanguage(index, value);
+            result["language"] = value;
+
+            result["codec"] = g_application.m_pPlayer->GetAudioCodecName();
+            result["bitrate"] = g_application.m_pPlayer->GetAudioBitrate();
+            result["channels"] = g_application.m_pPlayer->GetChannels();
+          }
+>>>>>>> xbmc-pivos/master
         }
         break;
         

@@ -14,6 +14,12 @@
 @@ -208,17 +208,12 @@
  
  char *ssh_get_user_home_dir(void) {
+<<<<<<< HEAD
+=======
++#if defined(__ANDROID__)
++  return strdup(getenv("HOME"));
++#else
+>>>>>>> xbmc-pivos/master
    char *szPath = NULL;
 -  struct passwd pwd;
 -  struct passwd *pwdbuf;

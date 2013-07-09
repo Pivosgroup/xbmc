@@ -38,6 +38,10 @@
 #endif
 
 #define ALSA_OPTIONS (SND_PCM_NONBLOCK | SND_PCM_NO_AUTO_FORMAT | SND_PCM_NO_AUTO_CHANNELS | SND_PCM_NO_AUTO_RESAMPLE)
+<<<<<<< HEAD
+=======
+#define ALSA_PERIODS 8
+>>>>>>> xbmc-pivos/master
 
 #define ALSA_MAX_CHANNELS 16
 static enum AEChannel ALSAChannelMap[ALSA_MAX_CHANNELS + 1] = {
@@ -94,7 +98,7 @@ CAESinkALSA::~CAESinkALSA()
   Deinitialize();
 }
 
-inline CAEChannelInfo CAESinkALSA::GetChannelLayout(AEAudioFormat format)
+CAEChannelInfo CAESinkALSA::GetChannelLayout(AEAudioFormat format)
 {
   unsigned int count = 0;
 
@@ -287,6 +291,7 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   }
 #endif
   unsigned int channelCount = format.m_channelLayout.Count();
+
   snd_pcm_hw_params_set_rate_near    (m_pcm, hw_params, &sampleRate, NULL);
   snd_pcm_hw_params_set_channels_near(m_pcm, hw_params, &channelCount);
 
@@ -355,8 +360,26 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
     }
   }
 
+<<<<<<< HEAD
+=======
+  unsigned int periods;
+>>>>>>> xbmc-pivos/master
   snd_pcm_uframes_t periodSize, bufferSize;
+
+  snd_pcm_hw_params_get_periods_min(hw_params, &periods, NULL);
+  snd_pcm_hw_params_get_period_size_min(hw_params, &periodSize, NULL);
+  snd_pcm_hw_params_get_buffer_size_min(hw_params, &bufferSize);
+  CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Min: periodSize %lu, periods %u, bufferSize %lu", periodSize, periods, bufferSize);
+
+  snd_pcm_hw_params_get_periods_max(hw_params, &periods, NULL);
+  snd_pcm_hw_params_get_period_size_max(hw_params, &periodSize, NULL);
   snd_pcm_hw_params_get_buffer_size_max(hw_params, &bufferSize);
+<<<<<<< HEAD
+=======
+  CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Max: periodSize %lu, periods %u, bufferSize %lu", periodSize, periods, bufferSize);
+
+  snd_pcm_hw_params_get_buffer_size_max(hw_params, &bufferSize);
+>>>>>>> xbmc-pivos/master
   snd_pcm_hw_params_get_period_size_max(hw_params, &periodSize, NULL);
 
   /* 
@@ -371,6 +394,19 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   // must be pot for pivos.
   bufferSize  = CheckNP2(bufferSize);
 #endif
+<<<<<<< HEAD
+=======
+
+  /*
+   According to upstream we should set buffer size first - so make sure it is always at least
+   4x period size to not get underruns (some systems seem to have issues with only 2 periods)
+  */
+  periodSize = std::min(periodSize, bufferSize / 4);
+#if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
+  // must be pot for pivos.
+  periodSize = CheckNP2(periodSize);
+#endif
+>>>>>>> xbmc-pivos/master
 
   /*
    According to upstream we should set buffer size first - so make sure it is always at least
@@ -382,7 +418,11 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   periodSize = CheckNP2(periodSize);
 #endif
 
+<<<<<<< HEAD
   CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Request: periodSize %lu, bufferSize %lu", periodSize, bufferSize);
+=======
+  CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Req: periodSize %lu, periods %u, bufferSize %lu", periodSize, periods, bufferSize);
+>>>>>>> xbmc-pivos/master
 
   snd_pcm_hw_params_t *hw_params_copy;
   snd_pcm_hw_params_alloca(&hw_params_copy);
