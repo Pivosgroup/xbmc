@@ -73,10 +73,12 @@ void CGUIDialogAudioSubtitleSettings::CreateSettings()
 {
   m_usePopupSliders = g_SkinInfo->HasSkinFile("DialogSlider.xml");
 
-  if (g_application.m_pPlayer)
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+  if (app_player)
   {
-    g_application.m_pPlayer->GetAudioCapabilities(m_audioCaps);
-    g_application.m_pPlayer->GetSubtitleCapabilities(m_subCaps);
+    app_player->GetAudioCapabilities(m_audioCaps);
+    app_player->GetSubtitleCapabilities(m_subCaps);
   }
 
   // clear out any old settings
@@ -86,7 +88,7 @@ void CGUIDialogAudioSubtitleSettings::CreateSettings()
   AddSlider(AUDIO_SETTINGS_VOLUME, 13376, &m_volume, VOLUME_MINIMUM, VOLUME_MAXIMUM / 100.0f, VOLUME_MAXIMUM, PercentAsDecibel, false);
   if (SupportsAudioFeature(IPC_AUD_AMP))
     AddSlider(AUDIO_SETTINGS_VOLUME_AMPLIFICATION, 660, &g_settings.m_currentVideoSettings.m_VolumeAmplification, VOLUME_DRC_MINIMUM * 0.01f, (VOLUME_DRC_MAXIMUM - VOLUME_DRC_MINIMUM) / 6000.0f, VOLUME_DRC_MAXIMUM * 0.01f, FormatDecibel, false);
-  if (g_application.m_pPlayer && g_application.m_pPlayer->IsPassthrough())
+  if (app_player->IsPassthrough())
   {
     EnableSettings(AUDIO_SETTINGS_VOLUME,false);
     EnableSettings(AUDIO_SETTINGS_VOLUME_AMPLIFICATION,false);
@@ -106,7 +108,7 @@ void CGUIDialogAudioSubtitleSettings::CreateSettings()
     AddSpin(AUDIO_SETTINGS_DIGITAL_ANALOG, 337, &m_outputmode, 3, settings);
 
   AddSeparator(7);
-  m_subtitleVisible = g_application.m_pPlayer->GetSubtitleVisible();
+  m_subtitleVisible = app_player->GetSubtitleVisible();
   AddBool(SUBTITLE_SETTINGS_ENABLE, 13397, &m_subtitleVisible);
   if (SupportsSubtitleFeature(IPC_SUBS_OFFSET))
     AddSlider(SUBTITLE_SETTINGS_DELAY, 22006, &g_settings.m_currentVideoSettings.m_SubtitleDelay, -g_advancedSettings.m_videoSubsDelayRange, 0.1f, g_advancedSettings.m_videoSubsDelayRange, FormatDelay);
@@ -126,9 +128,12 @@ void CGUIDialogAudioSubtitleSettings::AddAudioStreams(unsigned int id)
   setting.min = 0;
   setting.data = &m_audioStream;
 
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+
   // get the number of audio strams for the current movie
-  setting.max = (float)g_application.m_pPlayer->GetAudioStreamCount() - 1;
-  m_audioStream = g_application.m_pPlayer->GetAudioStream();
+  setting.max = (float)app_player->GetAudioStreamCount() - 1;
+  m_audioStream = app_player->GetAudioStream();
 
   if( m_audioStream < 0 ) m_audioStream = 0;
 
@@ -137,7 +142,7 @@ void CGUIDialogAudioSubtitleSettings::AddAudioStreams(unsigned int id)
   if (!setting.max)
   {
     CStdString strAudioInfo;
-    g_application.m_pPlayer->GetAudioInfo(strAudioInfo);
+    app_player->GetAudioInfo(strAudioInfo);
     int iNumChannels = atoi(strAudioInfo.Right(strAudioInfo.size() - strAudioInfo.Find("chns:") - 5).c_str());
     CStdString strAudioCodec = strAudioInfo.Mid(7, strAudioInfo.Find(") VBR") - 5);
     bool bDTS = strstr(strAudioCodec.c_str(), "DTS") != 0;
@@ -162,7 +167,7 @@ void CGUIDialogAudioSubtitleSettings::AddAudioStreams(unsigned int id)
   {
     CStdString strItem;
     CStdString strName;
-    g_application.m_pPlayer->GetAudioStreamName(i, strName);
+    app_player->GetAudioStreamName(i, strName);
     if (strName.length() == 0)
       strName = "Unnamed";
 
@@ -188,24 +193,28 @@ void CGUIDialogAudioSubtitleSettings::AddSubtitleStreams(unsigned int id)
   setting.type = SettingInfo::SPIN;
   setting.min = 0;
   setting.data = &m_subtitleStream;
-  m_subtitleStream = g_application.m_pPlayer->GetSubtitle();
+
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+
+  m_subtitleStream = app_player->GetSubtitle();
 
   if(m_subtitleStream < 0) m_subtitleStream = 0;
 
   // get the number of audio strams for the current movie
-  setting.max = (float)g_application.m_pPlayer->GetSubtitleCount() - 1;
+  setting.max = (float)app_player->GetSubtitleCount() - 1;
 
   // cycle through each subtitle and add it to our entry list
   for (int i = 0; i <= setting.max; ++i)
   {
     CStdString strItem;
     CStdString strName;
-    g_application.m_pPlayer->GetSubtitleName(i, strName);
+    app_player->GetSubtitleName(i, strName);
     if (strName.length() == 0)
       strName = "Unnamed";
 
     CStdString strLanguage;
-    g_application.m_pPlayer->GetSubtitleLanguage(i, strLanguage);
+    app_player->GetSubtitleLanguage(i, strLanguage);
 
     if (strName != strLanguage)
       strName.Format("%s [%s]", strName.c_str(), strLanguage.c_str());
@@ -226,6 +235,9 @@ void CGUIDialogAudioSubtitleSettings::AddSubtitleStreams(unsigned int id)
 
 void CGUIDialogAudioSubtitleSettings::OnSettingChanged(SettingInfo &setting)
 {
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+
   // check and update anything that needs it
   if (setting.id == AUDIO_SETTINGS_VOLUME)
   {
@@ -234,18 +246,18 @@ void CGUIDialogAudioSubtitleSettings::OnSettingChanged(SettingInfo &setting)
   }
   else if (setting.id == AUDIO_SETTINGS_VOLUME_AMPLIFICATION)
   {
-    if (g_application.m_pPlayer)
-      g_application.m_pPlayer->SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
+    if (app_player)
+      app_player->SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
   }
   else if (setting.id == AUDIO_SETTINGS_DELAY)
   {
-    if (g_application.m_pPlayer)
-      g_application.m_pPlayer->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
+    if (app_player)
+      app_player->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
   }
   else if (setting.id == AUDIO_SETTINGS_STREAM)
   {
     // first check if it's a stereo track that we can change between stereo, left and right
-    if (g_application.m_pPlayer->GetAudioStreamCount() == 1)
+    if (app_player && app_player->GetAudioStreamCount() == 1)
     {
       if (setting.max == 2)
       { // we're in the case we want - call the code to switch channels etc.
@@ -257,11 +269,11 @@ void CGUIDialogAudioSubtitleSettings::OnSettingChanged(SettingInfo &setting)
       }
     }
     // only change the audio stream if a different one has been asked for
-    if (g_application.m_pPlayer->GetAudioStream() != m_audioStream)
+    if (app_player && app_player->GetAudioStream() != m_audioStream)
     {
       g_settings.m_currentVideoSettings.m_AudioStream = m_audioStream;
-      g_application.m_pPlayer->SetAudioStream(m_audioStream);    // Set the audio stream to the one selected
-      EnableSettings(AUDIO_SETTINGS_VOLUME, !g_application.m_pPlayer->IsPassthrough());
+      app_player->SetAudioStream(m_audioStream);    // Set the audio stream to the one selected
+      EnableSettings(AUDIO_SETTINGS_VOLUME, !app_player->IsPassthrough());
     }
   }
   else if (setting.id == AUDIO_SETTINGS_OUTPUT_TO_ALL_SPEAKERS)
@@ -281,21 +293,25 @@ void CGUIDialogAudioSubtitleSettings::OnSettingChanged(SettingInfo &setting)
 
     EnableSettings(AUDIO_SETTINGS_OUTPUT_TO_ALL_SPEAKERS, bitstream);
     g_application.Restart();
-    EnableSettings(AUDIO_SETTINGS_VOLUME, !g_application.m_pPlayer->IsPassthrough());
+    if (app_player)
+      EnableSettings(AUDIO_SETTINGS_VOLUME, !app_player->IsPassthrough());
   }
   else if (setting.id == SUBTITLE_SETTINGS_ENABLE)
   {
     g_settings.m_currentVideoSettings.m_SubtitleOn = m_subtitleVisible;
-    g_application.m_pPlayer->SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
+    if (app_player)
+      app_player->SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
   }
   else if (setting.id == SUBTITLE_SETTINGS_DELAY)
   {
-    g_application.m_pPlayer->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
+    if (app_player)
+      app_player->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
   }
   else if (setting.id == SUBTITLE_SETTINGS_STREAM && setting.max > 0)
   {
     g_settings.m_currentVideoSettings.m_SubtitleStream = m_subtitleStream;
-    g_application.m_pPlayer->SetSubtitle(m_subtitleStream);
+    if (app_player)
+      app_player->SetSubtitle(m_subtitleStream);
   }
   else if (setting.id == SUBTITLE_SETTINGS_BROWSER)
   {
@@ -332,12 +348,12 @@ void CGUIDialogAudioSubtitleSettings::OnSettingChanged(SettingInfo &setting)
         if (CFile::Exists(URIUtils::ReplaceExtension(strPath, ".idx")))
           strPath = URIUtils::ReplaceExtension(strPath, ".idx");
       
-      int id = g_application.m_pPlayer->AddSubtitle(strPath);
+      int id = app_player->AddSubtitle(strPath);
       if(id >= 0)
       {
         m_subtitleStream = id;
-        g_application.m_pPlayer->SetSubtitle(m_subtitleStream);
-        g_application.m_pPlayer->SetSubtitleVisible(true);
+        app_player->SetSubtitle(m_subtitleStream);
+        app_player->SetSubtitleVisible(true);
       }
       g_settings.m_currentVideoSettings.m_SubtitleCached = true;
       Close();
@@ -372,7 +388,7 @@ void CGUIDialogAudioSubtitleSettings::FrameMove()
 {
   m_volume = g_settings.m_fVolumeLevel;
   UpdateSetting(AUDIO_SETTINGS_VOLUME);
-  if (g_application.m_pPlayer)
+  if (g_application.hasPlayer())
   {
     // these settings can change on the fly
     UpdateSetting(AUDIO_SETTINGS_DELAY);

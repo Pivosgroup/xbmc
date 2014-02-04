@@ -124,10 +124,10 @@ bool CGUIWindowMusicSongs::OnMessage(CGUIMessage& message)
       {
         if (g_application.IsPlayingAudio() )
         {
-          if (g_application.m_pPlayer->CanRecord() )
+          if (g_application.CanRecord() )
           {
-            bool bIsRecording = g_application.m_pPlayer->IsRecording();
-            g_application.m_pPlayer->Record(!bIsRecording);
+            bool bIsRecording = g_application.IsRecording();
+            g_application.RecordPlaying(!bIsRecording);
             UpdateButtons();
           }
         }
@@ -219,8 +219,8 @@ void CGUIWindowMusicSongs::UpdateButtons()
 
   if (bIsPlaying)
   {
-    bCanRecord = g_application.m_pPlayer->CanRecord();
-    bIsRecording = g_application.m_pPlayer->IsRecording();
+    bCanRecord = g_application.CanRecord();
+    bIsRecording = g_application.IsRecording();
   }
 
   // Update Record button

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,9 +24,9 @@
 
 #include "CoreAudioAEStream.h"
 #include "CoreAudioAESound.h"
+#include "Application.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "settings/GUISettings.h"
-#include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
 #include "threads/SingleLock.h"
 #include "utils/EndianSwap.h"
@@ -494,7 +494,14 @@ IAEStream* CCoreAudioAE::MakeStream(enum AEDataFormat dataFormat,
   // if we are suspended we don't
   // want anyone to mess with us
   if (m_isSuspended && !m_softSuspend)
+<<<<<<< HEAD
+#if defined(TARGET_DARWIN_IOS) && !defined(TARGET_DARWIN_IOS_ATV)
+    Resume();
+#else
+=======
+>>>>>>> xbmc-pivos/master
     return NULL;
+#endif
 
   CAEChannelInfo channelInfo(channelLayout);
   CLog::Log(LOGINFO, "CCoreAudioAE::MakeStream - %s, %u, %u, %s",

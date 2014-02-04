@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -49,7 +49,7 @@ public:
   /*
     Return true if the supplied format and device are compatible with the current open sink
   */
-  virtual bool IsCompatible(const AEAudioFormat format, const std::string device) = 0;
+  virtual bool IsCompatible(const AEAudioFormat format, const std::string &device) = 0;
 
   /*
     This method returns the time in seconds that it will take

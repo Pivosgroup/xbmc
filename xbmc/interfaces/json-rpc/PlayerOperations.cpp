@@ -224,7 +224,7 @@ JSONRPC_STATUS CPlayerOperations::PlayPause(const CStdString &method, ITransport
   {
     case Video:
     case Audio:
-      if (g_application.m_pPlayer && !g_application.m_pPlayer->CanPause())
+      if (!g_application.CanPause())
         return FailedToExecute;
       
       if (parameterObject["play"].isString())
@@ -296,11 +296,11 @@ JSONRPC_STATUS CPlayerOperations::SetSpeed(const CStdString &method, ITransportL
         {
           // If the player is paused we first need to unpause
           if (g_application.IsPaused())
-            g_application.m_pPlayer->Pause();
+            g_application.PausePlaying();
           g_application.SetPlaySpeed(speed);
         }
         else
-          g_application.m_pPlayer->Pause();
+          g_application.PausePlaying();
       }
       else if (parameterObject["speed"].isString())
       {
@@ -330,7 +330,7 @@ JSONRPC_STATUS CPlayerOperations::Seek(const CStdString &method, ITransportLayer
   {
     case Video:
     case Audio:
-      if (g_application.m_pPlayer && !g_application.m_pPlayer->CanSeek())
+      if (!g_application.CanSeek())
         return FailedToExecute;
       
       if (parameterObject["value"].isObject())
@@ -788,37 +788,41 @@ JSONRPC_STATUS CPlayerOperations::SetAudioStream(const CStdString &method, ITran
   switch (GetPlayer(parameterObject["playerid"]))
   {
     case Video:
-      if (g_application.m_pPlayer)
       {
-        int index = -1;
-        if (parameterObject["stream"].isString())
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (app_player)
         {
-          std::string action = parameterObject["stream"].asString();
-          if (action.compare("previous") == 0)
+          int index = -1;
+          if (parameterObject["stream"].isString())
           {
-            index = g_application.m_pPlayer->GetAudioStream() - 1;
-            if (index < 0)
-              index = g_application.m_pPlayer->GetAudioStreamCount() - 1;
+            std::string action = parameterObject["stream"].asString();
+            if (action.compare("previous") == 0)
+            {
+              index = app_player->GetAudioStream() - 1;
+              if (index < 0)
+                index = app_player->GetAudioStreamCount() - 1;
+            }
+            else if (action.compare("next") == 0)
+            {
+              index = app_player->GetAudioStream() + 1;
+              if (index >= app_player->GetAudioStreamCount())
+                index = 0;
+            }
+            else
+              return InvalidParams;
           }
-          else if (action.compare("next") == 0)
-          {
-            index = g_application.m_pPlayer->GetAudioStream() + 1;
-            if (index >= g_application.m_pPlayer->GetAudioStreamCount())
-              index = 0;
-          }
-          else
+          else if (parameterObject["stream"].isInteger())
+            index = (int)parameterObject["stream"].asInteger();
+
+          if (index < 0 || app_player->GetAudioStreamCount() <= index)
             return InvalidParams;
+
+          app_player->SetAudioStream(index);
         }
-        else if (parameterObject["stream"].isInteger())
-          index = (int)parameterObject["stream"].asInteger();
-
-        if (index < 0 || g_application.m_pPlayer->GetAudioStreamCount() <= index)
-          return InvalidParams;
-
-        g_application.m_pPlayer->SetAudioStream(index);
+        else
+          return FailedToExecute;
       }
-      else
-        return FailedToExecute;
       break;
       
     case Audio:
@@ -835,51 +839,55 @@ JSONRPC_STATUS CPlayerOperations::SetSubtitle(const CStdString &method, ITranspo
   switch (GetPlayer(parameterObject["playerid"]))
   {
     case Video:
-      if (g_application.m_pPlayer)
       {
-        int index = -1;
-        if (parameterObject["subtitle"].isString())
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (app_player)
         {
-          std::string action = parameterObject["subtitle"].asString();
-          if (action.compare("previous") == 0)
+          int index = -1;
+          if (parameterObject["subtitle"].isString())
           {
-            index = g_application.m_pPlayer->GetSubtitle() - 1;
-            if (index < 0)
-              index = g_application.m_pPlayer->GetSubtitleCount() - 1;
+            std::string action = parameterObject["subtitle"].asString();
+            if (action.compare("previous") == 0)
+            {
+              index = app_player->GetSubtitle() - 1;
+              if (index < 0)
+                index = app_player->GetSubtitleCount() - 1;
+            }
+            else if (action.compare("next") == 0)
+            {
+              index = app_player->GetSubtitle() + 1;
+              if (index >= app_player->GetSubtitleCount())
+                index = 0;
+            }
+            else if (action.compare("off") == 0)
+            {
+              app_player->SetSubtitleVisible(false);
+              return ACK;
+            }
+            else if (action.compare("on") == 0)
+            {
+              app_player->SetSubtitleVisible(true);
+              return ACK;
+            }
+            else
+              return InvalidParams;
           }
-          else if (action.compare("next") == 0)
-          {
-            index = g_application.m_pPlayer->GetSubtitle() + 1;
-            if (index >= g_application.m_pPlayer->GetSubtitleCount())
-              index = 0;
-          }
-          else if (action.compare("off") == 0)
-          {
-            g_application.m_pPlayer->SetSubtitleVisible(false);
-            return ACK;
-          }
-          else if (action.compare("on") == 0)
-          {
-            g_application.m_pPlayer->SetSubtitleVisible(true);
-            return ACK;
-          }
-          else
+          else if (parameterObject["subtitle"].isInteger())
+            index = (int)parameterObject["subtitle"].asInteger();
+
+          if (index < 0 || app_player->GetSubtitleCount() <= index)
             return InvalidParams;
+
+          app_player->SetSubtitle(index);
+
+          // Check if we need to enable subtitles to be displayed
+          if (parameterObject["enable"].asBoolean() && !app_player->GetSubtitleVisible())
+            app_player->SetSubtitleVisible(true);
         }
-        else if (parameterObject["subtitle"].isInteger())
-          index = (int)parameterObject["subtitle"].asInteger();
-
-        if (index < 0 || g_application.m_pPlayer->GetSubtitleCount() <= index)
-          return InvalidParams;
-
-        g_application.m_pPlayer->SetSubtitle(index);
-
-        // Check if we need to enable subtitles to be displayed
-        if (parameterObject["enable"].asBoolean() && !g_application.m_pPlayer->GetSubtitleVisible())
-          g_application.m_pPlayer->SetSubtitleVisible(true);
+        else
+          return FailedToExecute;
       }
-      else
-        return FailedToExecute;
       break;
       
     case Audio:
@@ -1248,10 +1256,7 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
     {
       case Video:
       case Audio:
-        if (g_application.m_pPlayer)
-          result = g_application.m_pPlayer->CanSeek();
-        else
-          result = false;
+        result = g_application.CanSeek();
         break;
 
       case Picture:
@@ -1356,12 +1361,31 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
     {
       case Video:
       case Audio:
-        if (g_application.m_pPlayer)
         {
-          result = CVariant(CVariant::VariantTypeObject);
-          int index = g_application.m_pPlayer->GetAudioStream();
-          if (index >= 0)
+          CSingleLock lock(*g_application.getPlayerLock());
+          IPlayer *app_player = g_application.getPlayer();
+          if (app_player)
           {
+<<<<<<< HEAD
+            result = CVariant(CVariant::VariantTypeObject);
+            int index = app_player->GetAudioStream();
+            if (index >= 0)
+            {
+              result["index"] = index;
+              CStdString value;
+              app_player->GetAudioStreamName(index, value);
+              result["name"] = value;
+              value.Empty();
+              app_player->GetAudioStreamLanguage(index, value);
+              result["language"] = value;
+            }
+            result["codec"] = app_player->GetAudioCodecName();
+            result["bitrate"] = app_player->GetAudioBitrate();
+            result["channels"] = app_player->GetChannels();
+          }
+          else
+            result = CVariant(CVariant::VariantTypeNull);
+=======
             result["index"] = index;
             CStdString value;
             g_application.m_pPlayer->GetAudioStreamName(index, value);
@@ -1374,9 +1398,8 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
             result["bitrate"] = g_application.m_pPlayer->GetAudioBitrate();
             result["channels"] = g_application.m_pPlayer->GetChannels();
           }
+>>>>>>> xbmc-pivos/master
         }
-        else
-          result = CVariant(CVariant::VariantTypeNull);
         break;
         
       case Picture:
@@ -1391,20 +1414,24 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
     switch (player)
     {
       case Video:
-        if (g_application.m_pPlayer)
         {
-          for (int index = 0; index < g_application.m_pPlayer->GetAudioStreamCount(); index++)
+          CSingleLock lock(*g_application.getPlayerLock());
+          IPlayer *app_player = g_application.getPlayer();
+          if (app_player)
           {
-            CVariant audioStream(CVariant::VariantTypeObject);
-            audioStream["index"] = index;
-            CStdString value;
-            g_application.m_pPlayer->GetAudioStreamName(index, value);
-            audioStream["name"] = value;
-            value.Empty();
-            g_application.m_pPlayer->GetAudioStreamLanguage(index, value);
-            audioStream["language"] = value;
+            for (int index = 0; index < app_player->GetAudioStreamCount(); index++)
+            {
+              CVariant audioStream(CVariant::VariantTypeObject);
+              audioStream["index"] = index;
+              CStdString value;
+              app_player->GetAudioStreamName(index, value);
+              audioStream["name"] = value;
+              value.Empty();
+              app_player->GetAudioStreamLanguage(index, value);
+              audioStream["language"] = value;
 
-            result.append(audioStream);
+              result.append(audioStream);
+            }
           }
         }
         break;
@@ -1420,8 +1447,12 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
     switch (player)
     {
       case Video:
-        if (g_application.m_pPlayer)
-          result = g_application.m_pPlayer->GetSubtitleVisible();
+        {
+          CSingleLock lock(*g_application.getPlayerLock());
+          IPlayer *app_player = g_application.getPlayer();
+          if (app_player)
+            result = app_player->GetSubtitleVisible();
+        }
         break;
         
       case Audio:
@@ -1436,23 +1467,27 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
     switch (player)
     {
       case Video:
-        if (g_application.m_pPlayer)
         {
-          result = CVariant(CVariant::VariantTypeObject);
-          int index = g_application.m_pPlayer->GetSubtitle();
-          if (index >= 0)
+          CSingleLock lock(*g_application.getPlayerLock());
+          IPlayer *app_player = g_application.getPlayer();
+          if (app_player)
           {
-            result["index"] = index;
-            CStdString value;
-            g_application.m_pPlayer->GetSubtitleName(index, value);
-            result["name"] = value;
-            value.Empty();
-            g_application.m_pPlayer->GetSubtitleLanguage(index, value);
-            result["language"] = value;
+            result = CVariant(CVariant::VariantTypeObject);
+            int index = app_player->GetSubtitle();
+            if (index >= 0)
+            {
+              result["index"] = index;
+              CStdString value;
+              app_player->GetSubtitleName(index, value);
+              result["name"] = value;
+              value.Empty();
+              app_player->GetSubtitleLanguage(index, value);
+              result["language"] = value;
+            }
           }
+          else
+            result = CVariant(CVariant::VariantTypeNull);
         }
-        else
-          result = CVariant(CVariant::VariantTypeNull);
         break;
         
       case Audio:
@@ -1468,20 +1503,24 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
     switch (player)
     {
       case Video:
-        if (g_application.m_pPlayer)
         {
-          for (int index = 0; index < g_application.m_pPlayer->GetSubtitleCount(); index++)
+          CSingleLock lock(*g_application.getPlayerLock());
+          IPlayer *app_player = g_application.getPlayer();
+          if (app_player)
           {
-            CVariant subtitle(CVariant::VariantTypeObject);
-            subtitle["index"] = index;
-            CStdString value;
-            g_application.m_pPlayer->GetSubtitleName(index, value);
-            subtitle["name"] = value;
-            value.Empty();
-            g_application.m_pPlayer->GetSubtitleLanguage(index, value);
-            subtitle["language"] = value;
+            for (int index = 0; index < app_player->GetSubtitleCount(); index++)
+            {
+              CVariant subtitle(CVariant::VariantTypeObject);
+              subtitle["index"] = index;
+              CStdString value;
+              app_player->GetSubtitleName(index, value);
+              subtitle["name"] = value;
+              value.Empty();
+              app_player->GetSubtitleLanguage(index, value);
+              subtitle["language"] = value;
 
-            result.append(subtitle);
+              result.append(subtitle);
+            }
           }
         }
         break;

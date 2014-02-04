@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -48,9 +48,8 @@ bool CAEFactory::LoadEngine()
 
   bool loaded = false;
 
-  std::string engine;
-
 #if defined(TARGET_LINUX)
+  std::string engine;
   if (getenv("AE_ENGINE"))
   {
     engine = (std::string)getenv("AE_ENGINE");
@@ -203,9 +202,8 @@ void CAEFactory::VerifyOutputDevice(std::string &device, bool passthrough)
   EnumerateOutputDevices(devices, passthrough);
   std::string firstDevice;
 
-  for (AEDeviceList::const_iterator deviceIt = devices.begin(); deviceIt != devices.end(); deviceIt++)
+  for (AEDeviceList::const_iterator deviceIt = devices.begin(); deviceIt != devices.end(); ++deviceIt)
   {
-    std::string currentDevice = deviceIt->second;
     /* remember the first device so we can default to it if required */
     if (firstDevice.empty())
       firstDevice = deviceIt->second;

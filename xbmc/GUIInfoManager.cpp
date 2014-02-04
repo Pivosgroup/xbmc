@@ -1332,16 +1332,31 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     strLabel.Format("%2.3f s", g_settings.m_currentVideoSettings.m_AudioDelay);
     break;
   case PLAYER_CHAPTER:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
-      strLabel.Format("%02d", g_application.m_pPlayer->GetChapter());
+    if(g_application.IsPlaying())
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        strLabel.Format("%02d", app_player->GetChapter());
+    }
     break;
   case PLAYER_CHAPTERCOUNT:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
-      strLabel.Format("%02d", g_application.m_pPlayer->GetChapterCount());
+    if(g_application.IsPlaying())
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        strLabel.Format("%02d", app_player->GetChapterCount());
+    }
     break;
   case PLAYER_CHAPTERNAME:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
-      g_application.m_pPlayer->GetChapterName(strLabel);
+    if(g_application.IsPlaying())
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        app_player->GetChapterName(strLabel);
+    }
     break;
   case PLAYER_CACHELEVEL:
     {
@@ -1351,11 +1366,11 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     }
     break;
   case PLAYER_TIME:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.IsPlaying())
       strLabel = GetCurrentPlayTime(TIME_FORMAT_HH_MM);
     break;
   case PLAYER_DURATION:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.IsPlaying())
       strLabel = GetDuration(TIME_FORMAT_HH_MM);
     break;
   case PLAYER_PATH:
@@ -1455,28 +1470,54 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     strLabel = GetVideoLabel(info);
   break;
   case VIDEOPLAYER_VIDEO_CODEC:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
-      strLabel = g_application.m_pPlayer->GetVideoCodecName();
+    if(g_application.IsPlaying())
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        strLabel = app_player->GetVideoCodecName();
+    }
     break;
   case VIDEOPLAYER_VIDEO_RESOLUTION:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
-      return CStreamDetails::VideoDimsToResolutionDescription(g_application.m_pPlayer->GetPictureWidth(), g_application.m_pPlayer->GetPictureHeight());
+    if(g_application.IsPlaying())
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        return CStreamDetails::VideoDimsToResolutionDescription(
+          app_player->GetPictureWidth(), app_player->GetPictureHeight());
+    }
     break;
   case VIDEOPLAYER_AUDIO_CODEC:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
-      strLabel = g_application.m_pPlayer->GetAudioCodecName();
+    if(g_application.IsPlaying())
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        strLabel = app_player->GetAudioCodecName();
+    }
     break;
   case VIDEOPLAYER_VIDEO_ASPECT:
-    if (g_application.IsPlaying() && g_application.m_pPlayer)
+    if(g_application.IsPlaying())
     {
-      float aspect;
-      g_application.m_pPlayer->GetVideoAspectRatio(aspect);
-      strLabel = CStreamDetails::VideoAspectToAspectDescription(aspect);
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+      {
+        float aspect;
+        app_player->GetVideoAspectRatio(aspect);
+        strLabel = CStreamDetails::VideoAspectToAspectDescription(aspect);
+      }
     }
     break;
   case VIDEOPLAYER_AUDIO_CHANNELS:
-    if(g_application.IsPlaying() && g_application.m_pPlayer)
-      strLabel.Format("%i", g_application.m_pPlayer->GetChannels());
+    if(g_application.IsPlaying())
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        strLabel.Format("%i", app_player->GetChannels());
+    }
     break;
   case PLAYLIST_LENGTH:
   case PLAYLIST_POSITION:
@@ -1890,7 +1931,7 @@ bool CGUIInfoManager::GetInt(int &value, int info, int contextWindow, const CGUI
     case PLAYER_CHAPTER:
     case PLAYER_CHAPTERCOUNT:
       {
-        if( g_application.IsPlaying() && g_application.m_pPlayer)
+        if(g_application.IsPlaying())
         {
           switch( info )
           {
@@ -1904,13 +1945,28 @@ bool CGUIInfoManager::GetInt(int &value, int info, int contextWindow, const CGUI
             value = (int)g_application.GetSeekHandler()->GetPercent();
             break;
           case PLAYER_CACHELEVEL:
-            value = (int)(g_application.m_pPlayer->GetCacheLevel());
+            {
+              CSingleLock lock(*g_application.getPlayerLock());
+              IPlayer *app_player = g_application.getPlayer();
+              if (app_player)
+                value = (int)(app_player->GetCacheLevel());
+            }
             break;
           case PLAYER_CHAPTER:
-            value = g_application.m_pPlayer->GetChapter();
+            {
+              CSingleLock lock(*g_application.getPlayerLock());
+              IPlayer *app_player = g_application.getPlayer();
+              if (app_player)
+                value = app_player->GetChapter();
+            }
             break;
           case PLAYER_CHAPTERCOUNT:
-            value = g_application.m_pPlayer->GetChapterCount();
+            {
+              CSingleLock lock(*g_application.getPlayerLock());
+              IPlayer *app_player = g_application.getPlayer();
+              if (app_player)
+                value = app_player->GetChapterCount();
+            }
             break;
           }
         }
@@ -2319,22 +2375,27 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       bReturn = !g_application.IsPaused() && g_application.GetPlaySpeed() == 32;
       break;
     case PLAYER_CAN_RECORD:
-      bReturn = g_application.m_pPlayer->CanRecord();
+      bReturn = g_application.CanRecord();
       break;
     case PLAYER_CAN_PAUSE:
-      bReturn = g_application.m_pPlayer->CanPause();
+      bReturn = g_application.CanPause();
       break;
     case PLAYER_CAN_SEEK:
-      bReturn = g_application.m_pPlayer->CanSeek();
+      bReturn = g_application.CanSeek();
       break;
     case PLAYER_RECORDING:
-      bReturn = g_application.m_pPlayer->IsRecording();
+      bReturn = g_application.IsRecording();
     break;
     case PLAYER_DISPLAY_AFTER_SEEK:
       bReturn = GetDisplayAfterSeek();
     break;
     case PLAYER_CACHING:
-      bReturn = g_application.m_pPlayer->IsCaching();
+      {
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (app_player)
+          bReturn = app_player->IsCaching();
+      }
     break;
     case PLAYER_SEEKBAR:
       {
@@ -2349,7 +2410,14 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       bReturn = m_playerShowTime;
     break;
     case PLAYER_PASSTHROUGH:
-      bReturn = g_application.m_pPlayer && g_application.m_pPlayer->IsPassthrough();
+      {
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (!app_player)
+          bReturn = false;
+        else
+          bReturn = app_player && app_player->IsPassthrough();
+      }
       break;
     case MUSICPM_ENABLED:
       bReturn = g_partyModeManager.IsEnabled();
@@ -2396,7 +2464,14 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       bReturn = g_windowManager.GetActiveWindow() == WINDOW_FULLSCREEN_VIDEO;
     break;
     case VIDEOPLAYER_HASMENU:
-      bReturn = g_application.m_pPlayer->HasMenu();
+      {
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (!app_player)
+          bReturn = false;
+        else
+          bReturn = app_player->HasMenu();
+      }
     break;
     case PLAYLIST_ISRANDOM:
       bReturn = g_playlistPlayer.IsShuffled(g_playlistPlayer.GetCurrentPlaylist());
@@ -2411,14 +2486,34 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       bReturn = g_application.GetTotalTime() > 0;
       break;
     case VIDEOPLAYER_HASTELETEXT:
-      if (g_application.m_pPlayer->GetTeletextCache())
-        bReturn = true;
+      {
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (!app_player )
+          bReturn = false;
+        else
+          bReturn = app_player->GetTeletextCache();
+      }
       break;
     case VIDEOPLAYER_HASSUBTITLES:
-      bReturn = g_application.m_pPlayer->GetSubtitleCount() > 0;
+      {
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (!app_player )
+          bReturn = false;
+        else
+          bReturn = app_player->GetSubtitleCount() > 0;
+      }
       break;
     case VIDEOPLAYER_SUBTITLESENABLED:
-      bReturn = g_application.m_pPlayer->GetSubtitleVisible();
+      {
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (!app_player )
+          bReturn = false;
+        else
+          bReturn = app_player->GetSubtitleVisible();
+      }
       break;
     case VISUALISATION_LOCKED:
       {
@@ -3449,7 +3544,10 @@ CStdString CGUIInfoManager::GetMusicLabel(int item)
       float fTimeSpan = (float)(CTimeUtils::GetFrameTime() - m_lastMusicBitrateTime);
       if (fTimeSpan >= 500.0f)
       {
-        m_MusicBitrate = g_application.m_pPlayer->GetAudioBitrate();
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (app_player)
+          m_MusicBitrate = app_player->GetAudioBitrate();
         m_lastMusicBitrateTime = CTimeUtils::GetFrameTime();
       }
       CStdString strBitrate = "";
@@ -3461,19 +3559,21 @@ CStdString CGUIInfoManager::GetMusicLabel(int item)
   case MUSICPLAYER_CHANNELS:
     {
       CStdString strChannels = "";
-      if (g_application.m_pPlayer->GetChannels() > 0)
-      {
-        strChannels.Format("%i", g_application.m_pPlayer->GetChannels());
-      }
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player && app_player->GetChannels() > 0)
+        strChannels.Format("%i", app_player->GetChannels());
       return strChannels;
     }
     break;
   case MUSICPLAYER_BITSPERSAMPLE:
     {
       CStdString strBitsPerSample = "";
-      if (g_application.m_pPlayer->GetBitsPerSample() > 0)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player && app_player->GetBitsPerSample() > 0)
       {
-        strBitsPerSample.Format("%i", g_application.m_pPlayer->GetBitsPerSample());
+        strBitsPerSample.Format("%i", app_player->GetBitsPerSample());
       }
       return strBitsPerSample;
     }
@@ -3481,17 +3581,22 @@ CStdString CGUIInfoManager::GetMusicLabel(int item)
   case MUSICPLAYER_SAMPLERATE:
     {
       CStdString strSampleRate = "";
-      if (g_application.m_pPlayer->GetSampleRate() > 0)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player && app_player->GetSampleRate() > 0)
       {
-        strSampleRate.Format("%.5g", ((double)g_application.m_pPlayer->GetSampleRate() / 1000.0));
+        strSampleRate.Format("%.5g", ((double)app_player->GetSampleRate() / 1000.0));
       }
       return strSampleRate;
     }
     break;
   case MUSICPLAYER_CODEC:
     {
-      CStdString strCodec;
-      strCodec.Format("%s", g_application.m_pPlayer->GetAudioCodecName().c_str());
+      CStdString strCodec = "";
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        strCodec.Format("%s", app_player->GetAudioCodecName().c_str());
       return strCodec;
     }
     break;
@@ -3599,9 +3704,13 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
       return m_currentFile->GetPVRRecordingInfoTag()->m_strTitle;
     if (m_currentFile->HasVideoInfoTag() && !m_currentFile->GetVideoInfoTag()->m_strTitle.IsEmpty())
       return m_currentFile->GetVideoInfoTag()->m_strTitle;
-    // don't have the title, so use dvdplayer, label, or drop down to title from path
-    if (!g_application.m_pPlayer->GetPlayingTitle().IsEmpty())
-      return g_application.m_pPlayer->GetPlayingTitle();
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      // don't have the title, so use dvdplayer, label, or drop down to title from path
+      if (app_player && !app_player->GetPlayingTitle().IsEmpty())
+        return app_player->GetPlayingTitle();
+    }
     if (!m_currentFile->GetLabel().IsEmpty())
       return m_currentFile->GetLabel();
     return CUtil::GetTitleFromPath(m_currentFile->GetPath());

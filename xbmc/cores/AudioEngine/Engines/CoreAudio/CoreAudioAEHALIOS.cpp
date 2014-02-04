@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -32,7 +32,8 @@
 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#define BUFFERED_FRAMES 1024
+// use the maximum frames per slice allows audio play when the screen is locked
+#define BUFFERED_FRAMES 4096
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CIOSCoreAudioHardware
@@ -634,8 +635,12 @@ bool CCoreAudioGraph::Open(ICoreAudioSource *pSource, AEAudioFormat &format, boo
   if (!m_audioUnit->Open(m_audioGraph, kAudioUnitType_Output, kAudioUnitSubType_RemoteIO, kAudioUnitManufacturer_Apple))
     return false;
 
+  UInt32 bufferFrames = m_audioUnit->GetBufferFrameSize();
+
   if (!m_audioUnit->EnableInputOuput())
     return false;
+
+  m_audioUnit->SetMaxFramesPerSlice(bufferFrames);
 
   m_audioUnit->GetFormatDesc(format, &inputFormat);
 
@@ -661,6 +666,8 @@ bool CCoreAudioGraph::Open(ICoreAudioSource *pSource, AEAudioFormat &format, boo
 
     if (!m_mixerUnit->Open(m_audioGraph, kAudioUnitType_Mixer, kAudioUnitSubType_MultiChannelMixer, kAudioUnitManufacturer_Apple))
       return false;
+
+    m_mixerUnit->SetMaxFramesPerSlice(bufferFrames);
 
     // set number of input buses
     if (!m_mixerUnit->SetInputBusCount(MAX_CONNECTION_LIMIT))
@@ -697,6 +704,8 @@ bool CCoreAudioGraph::Open(ICoreAudioSource *pSource, AEAudioFormat &format, boo
 
     if (!m_inputUnit->Open(m_audioGraph, kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter, kAudioUnitManufacturer_Apple))
       return false;
+
+    m_inputUnit->SetMaxFramesPerSlice(bufferFrames);
 
     if (!m_inputUnit->SetFormat(&inputFormat, kAudioUnitScope_Input, kOutputBus))
       return false;
@@ -772,12 +781,6 @@ bool CCoreAudioGraph::Open(ICoreAudioSource *pSource, AEAudioFormat &format, boo
   }
 
   SetCurrentVolume(initVolume);
-
-  UInt32 bufferFrames = m_audioUnit->GetBufferFrameSize();
-
-  m_audioUnit->SetMaxFramesPerSlice(bufferFrames);
-  if (m_inputUnit)
-    m_inputUnit->SetMaxFramesPerSlice(bufferFrames);
 
   SetInputSource(pSource);
 
@@ -985,6 +988,8 @@ CAUOutputDevice *CCoreAudioGraph::CreateUnit(AEAudioFormat &format)
   CAUOutputDevice *outputUnit = new CAUOutputDevice();
   if (!outputUnit->Open(m_audioGraph, kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter, kAudioUnitManufacturer_Apple))
     goto error;
+  
+  outputUnit->SetMaxFramesPerSlice(m_audioUnit->GetBufferFrameSize());
 
   m_audioUnit->GetFormatDesc(format, &inputFormat);
 

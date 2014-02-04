@@ -75,7 +75,11 @@ void CNetworkManager::Initialize()
 bool CNetworkManager::PumpNetworkEvents()
 {
 #if defined(TARGET_ANDROID)
+<<<<<<< HEAD
+  if (!g_application.hasPlayer())
+=======
   if (!g_application.m_pPlayer)
+>>>>>>> xbmc-pivos/master
   {
     if (!m_timer && !IsConnected())
     {

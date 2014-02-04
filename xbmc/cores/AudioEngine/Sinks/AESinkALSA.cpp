@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -38,7 +38,10 @@
 #endif
 
 #define ALSA_OPTIONS (SND_PCM_NONBLOCK | SND_PCM_NO_AUTO_FORMAT | SND_PCM_NO_AUTO_CHANNELS | SND_PCM_NO_AUTO_RESAMPLE)
+<<<<<<< HEAD
+=======
 #define ALSA_PERIODS 8
+>>>>>>> xbmc-pivos/master
 
 #define ALSA_MAX_CHANNELS 16
 static enum AEChannel ALSAChannelMap[ALSA_MAX_CHANNELS + 1] = {
@@ -79,7 +82,11 @@ static int CheckNP2(unsigned x)
 
 
 CAESinkALSA::CAESinkALSA() :
-  m_pcm(NULL)
+  m_bufferSize(0),
+  m_formatSampleRateMul(0.0),
+  m_passthrough(false),
+  m_pcm(NULL),
+  m_timeout(0)
 {
   /* ensure that ALSA has been initialized */
   if (!snd_config)
@@ -186,16 +193,7 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   snd_config_t *config;
   snd_config_copy(&config, snd_config);
 
-  snd_config_t *dmixRateConf;
-  long dmixRate;
-
-  if (snd_config_search(config, "defaults.pcm.dmix.rate", &dmixRateConf) < 0
-      || snd_config_get_integer(dmixRateConf, &dmixRate) < 0)
-    dmixRate = 48000; /* assume default */
-
-
-  /* Prefer dmix for non-passthrough stereo when sample rate matches */
-  if (!OpenPCMDevice(device, AESParams, m_channelLayout.Count(), &m_pcm, config, format.m_sampleRate == (unsigned int) dmixRate && !m_passthrough))
+  if (!OpenPCMDevice(device, AESParams, m_channelLayout.Count(), &m_pcm, config))
   {
     CLog::Log(LOGERROR, "CAESinkALSA::Initialize - failed to initialize device \"%s\"", device.c_str());
     snd_config_delete(config);
@@ -223,7 +221,7 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   return true;
 }
 
-bool CAESinkALSA::IsCompatible(const AEAudioFormat format, const std::string device)
+bool CAESinkALSA::IsCompatible(const AEAudioFormat format, const std::string &device)
 {
   return (
       /* compare against the requested format and the real format */
@@ -362,7 +360,10 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
     }
   }
 
+<<<<<<< HEAD
+=======
   unsigned int periods;
+>>>>>>> xbmc-pivos/master
   snd_pcm_uframes_t periodSize, bufferSize;
 
   snd_pcm_hw_params_get_periods_min(hw_params, &periods, NULL);
@@ -373,9 +374,12 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   snd_pcm_hw_params_get_periods_max(hw_params, &periods, NULL);
   snd_pcm_hw_params_get_period_size_max(hw_params, &periodSize, NULL);
   snd_pcm_hw_params_get_buffer_size_max(hw_params, &bufferSize);
+<<<<<<< HEAD
+=======
   CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Max: periodSize %lu, periods %u, bufferSize %lu", periodSize, periods, bufferSize);
 
   snd_pcm_hw_params_get_buffer_size_max(hw_params, &bufferSize);
+>>>>>>> xbmc-pivos/master
   snd_pcm_hw_params_get_period_size_max(hw_params, &periodSize, NULL);
 
   /* 
@@ -390,6 +394,19 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   // must be pot for pivos.
   bufferSize  = CheckNP2(bufferSize);
 #endif
+<<<<<<< HEAD
+=======
+
+  /*
+   According to upstream we should set buffer size first - so make sure it is always at least
+   4x period size to not get underruns (some systems seem to have issues with only 2 periods)
+  */
+  periodSize = std::min(periodSize, bufferSize / 4);
+#if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
+  // must be pot for pivos.
+  periodSize = CheckNP2(periodSize);
+#endif
+>>>>>>> xbmc-pivos/master
 
   /*
    According to upstream we should set buffer size first - so make sure it is always at least
@@ -401,11 +418,11 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   periodSize = CheckNP2(periodSize);
 #endif
 
-  bufferSize  = std::min(bufferSize, (snd_pcm_uframes_t)8192);
-  periodSize  = bufferSize / ALSA_PERIODS;
-  periods     = ALSA_PERIODS;
-
+<<<<<<< HEAD
+  CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Request: periodSize %lu, bufferSize %lu", periodSize, bufferSize);
+=======
   CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Req: periodSize %lu, periods %u, bufferSize %lu", periodSize, periods, bufferSize);
+>>>>>>> xbmc-pivos/master
 
   snd_pcm_hw_params_t *hw_params_copy;
   snd_pcm_hw_params_alloca(&hw_params_copy);
@@ -692,7 +709,7 @@ bool CAESinkALSA::TryDeviceWithParams(const std::string &name, const std::string
   return TryDevice(name, pcmp, lconf);
 }
 
-bool CAESinkALSA::OpenPCMDevice(const std::string &name, const std::string &params, int channels, snd_pcm_t **pcmp, snd_config_t *lconf, bool preferDmixStereo)
+bool CAESinkALSA::OpenPCMDevice(const std::string &name, const std::string &params, int channels, snd_pcm_t **pcmp, snd_config_t *lconf)
 {
  /* Special name denoting surroundXX mangling. This is needed for some
    * devices for multichannel to work. */
@@ -720,12 +737,8 @@ bool CAESinkALSA::OpenPCMDevice(const std::string &name, const std::string &para
           return true;
     }
 
-    /* If preferDmix is false, try non-dmix configuration first.
-     * This allows output with non-48000 sample rate if device is free */
-    if (!preferDmixStereo && TryDeviceWithParams("front" + openName, params, pcmp, lconf))
-      return true;
-
-    /* Try "sysdefault" and "default" (they provide dmix),
+    /* Try "sysdefault" and "default" (they provide dmix if needed, and route
+     * audio to all extra channels on subdeviced cards),
      * unless the selected devices is not DEV=0 of the card, in which case
      * "sysdefault" and "default" would point to another device.
      * "sysdefault" is a newish device name that won't be overwritten in case
@@ -744,8 +757,8 @@ bool CAESinkALSA::OpenPCMDevice(const std::string &name, const std::string &para
         return true;
     }
 
-    /* Try non-dmix "front" */
-    if (preferDmixStereo && TryDeviceWithParams("front" + openName, params, pcmp, lconf))
+    /* Try "front" (no dmix, no audio in other channels on subdeviced cards) */
+    if (TryDeviceWithParams("front" + openName, params, pcmp, lconf))
       return true;
 
   }
@@ -964,7 +977,7 @@ std::string CAESinkALSA::GetParamFromName(const std::string &name, const std::st
 void CAESinkALSA::EnumerateDevice(AEDeviceInfoList &list, const std::string &device, const std::string &description, snd_config_t *config)
 {
   snd_pcm_t *pcmhandle = NULL;
-  if (!OpenPCMDevice(device, "", ALSA_MAX_CHANNELS, &pcmhandle, config, false))
+  if (!OpenPCMDevice(device, "", ALSA_MAX_CHANNELS, &pcmhandle, config))
     return;
 
   snd_pcm_info_t *pcminfo;
@@ -1114,7 +1127,7 @@ void CAESinkALSA::EnumerateDevice(AEDeviceInfoList &list, const std::string &dev
   {
     /* Reopen the device if needed on the special "surroundXX" cases */
     if (info.m_deviceType == AE_DEVTYPE_PCM && (i == 8 || i == 6 || i == 4))
-      OpenPCMDevice(device, "", i, &pcmhandle, config, false);
+      OpenPCMDevice(device, "", i, &pcmhandle, config);
 
     if (snd_pcm_hw_params_test_channels(pcmhandle, hwparams, i) >= 0)
     {

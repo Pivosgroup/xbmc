@@ -82,7 +82,11 @@ bool CZeroconfOSX::doPublishService(const std::string& fcr_identifier,
 
     //txt map to dictionary
     CFDataRef txtData = NULL;
+<<<<<<< HEAD
+    CFMutableDictionaryRef txtDict = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+=======
     CFMutableDictionaryRef txtDict = CFDictionaryCreateMutable(NULL, 0, &key_cb, &kCFTypeDictionaryValueCallBacks);
+>>>>>>> xbmc-pivos/master
     for(std::vector<std::pair<std::string, std::string> >::const_iterator it = txt.begin(); it != txt.end(); ++it)
     {
       CFStringRef key = CFStringCreateWithCString (NULL,

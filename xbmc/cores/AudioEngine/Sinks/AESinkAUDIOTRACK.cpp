@@ -1,5 +1,5 @@
  /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -26,6 +26,8 @@
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
 #include "utils/AMLUtils.h"
 #endif
+
+#define DEFAULT_AUDIO_OFFSET 0.250f
 
 #include <jni.h>
 
@@ -72,6 +74,18 @@ CAESinkAUDIOTRACK::CAESinkAUDIOTRACK()
 {
   m_sinkbuffer = NULL;
   m_alignedS16LE = NULL;
+<<<<<<< HEAD
+  m_volume_changed = false;
+  m_min_frames = 0;
+  m_sink_frameSize = 0;
+  m_sinkbuffer_sec = 0.0;
+  m_sinkbuffer_sec_per_byte = 0.0;
+  m_draining = false;
+  m_audiotrackbuffer_sec = 0.0;
+  m_audiotrack_empty_sec = 0.0;
+  m_volume = 0.0;
+=======
+>>>>>>> xbmc-pivos/master
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   aml_cpufreq_limit(true);
 #endif
@@ -159,7 +173,7 @@ void CAESinkAUDIOTRACK::Deinitialize()
     _aligned_free(m_alignedS16LE), m_alignedS16LE = NULL;
 }
 
-bool CAESinkAUDIOTRACK::IsCompatible(const AEAudioFormat format, const std::string device)
+bool CAESinkAUDIOTRACK::IsCompatible(const AEAudioFormat format, const std::string &device)
 {
   return ((m_format.m_sampleRate    == format.m_sampleRate) &&
           (m_format.m_dataFormat    == format.m_dataFormat) &&
@@ -175,7 +189,11 @@ double CAESinkAUDIOTRACK::GetDelay()
   sinkbuffer_seconds_to_empty += m_audiotrack_empty_sec;
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   if (sinkbuffer_seconds_to_empty > 0.0)
+<<<<<<< HEAD
+    sinkbuffer_seconds_to_empty += DEFAULT_AUDIO_OFFSET;
+=======
     sinkbuffer_seconds_to_empty += 0.250;
+>>>>>>> xbmc-pivos/master
 #endif
   return sinkbuffer_seconds_to_empty;
 }
@@ -189,7 +207,11 @@ double CAESinkAUDIOTRACK::GetCacheTime()
   sinkbuffer_seconds_to_empty += m_audiotrack_empty_sec;
 #if defined(HAS_AMLPLAYER) || defined(HAS_LIBAMCODEC)
   if (sinkbuffer_seconds_to_empty > 0.0)
+<<<<<<< HEAD
+    sinkbuffer_seconds_to_empty += DEFAULT_AUDIO_OFFSET;
+=======
     sinkbuffer_seconds_to_empty += 0.250;
+>>>>>>> xbmc-pivos/master
 #endif
   return sinkbuffer_seconds_to_empty;
 }
@@ -254,7 +276,11 @@ void  CAESinkAUDIOTRACK::SetVolume(float scale)
   float gain = CAEUtil::ScaleToGain(scale);
   m_volume = CAEUtil::GainToPercent(gain);
   if (!m_passthrough)
+<<<<<<< HEAD
+  	m_volume_changed = true;
+=======
     m_volume_changed = true;
+>>>>>>> xbmc-pivos/master
 }
 
 void CAESinkAUDIOTRACK::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
@@ -325,10 +351,17 @@ void CAESinkAUDIOTRACK::Process()
     GetStaticIntField(jenv, "AudioTrack", "MODE_STREAM"));
 
   // Set the initial volume
+<<<<<<< HEAD
+  float volume = 1.0;
+  if (!m_passthrough)
+    volume = m_volume;
+  CXBMCApp::SetSystemVolume(jenv, volume);
+=======
   jfloat jvolume = 1.0;
   if (!m_passthrough)
     jvolume = m_volume;
   CXBMCApp::SetSystemVolume(jenv, jvolume);
+>>>>>>> xbmc-pivos/master
 
   // The AudioTrack object has been created and waiting to play,
   m_inited.Set();

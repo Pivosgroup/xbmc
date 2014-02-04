@@ -205,10 +205,24 @@ bool CLinuxRendererGLES::Configure(unsigned int width, unsigned int height, unsi
       m_RenderFeaturesCallBackFn = NULL;
       m_RenderFeaturesCallBackCtx = NULL;
     }
+<<<<<<< HEAD
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *player = g_application.getPlayer();
+      if (player)
+      {
+        player->GetRenderFeatures(m_renderFeatures);
+        player->GetScalingMethods(m_scalingMethods);
+        player->GetDeinterlaceModes(m_deinterlaceModes);
+        player->GetDeinterlaceMethods(m_deinterlaceMethods);
+      }
+    }
+=======
     g_application.m_pPlayer->GetRenderFeatures(m_renderFeatures);
     g_application.m_pPlayer->GetScalingMethods(m_scalingMethods);
     g_application.m_pPlayer->GetDeinterlaceModes(m_deinterlaceModes);
     g_application.m_pPlayer->GetDeinterlaceMethods(m_deinterlaceMethods);
+>>>>>>> xbmc-pivos/master
   }
 
   return true;

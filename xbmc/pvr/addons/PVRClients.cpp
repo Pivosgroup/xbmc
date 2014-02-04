@@ -1045,7 +1045,9 @@ void CPVRClients::LoadCurrentChannelSettings(void)
   if (!database)
     return;
 
-  if (g_application.m_pPlayer)
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+  if (app_player)
   {
     /* set the default settings first */
     CVideoSettings loadedChannelSettings = g_settings.m_defaultVideoSettings;
@@ -1093,18 +1095,18 @@ void CPVRClients::LoadCurrentChannelSettings(void)
     {
       g_settings.m_currentVideoSettings.m_SubtitleStream = loadedChannelSettings.m_SubtitleStream;
 
-      g_application.m_pPlayer->SetSubtitle(g_settings.m_currentVideoSettings.m_SubtitleStream);
+      app_player->SetSubtitle(g_settings.m_currentVideoSettings.m_SubtitleStream);
     }
 
     /* only change the audio stream if it's different */
-    if (g_application.m_pPlayer->GetAudioStream() != g_settings.m_currentVideoSettings.m_AudioStream &&
+    if (app_player->GetAudioStream() != g_settings.m_currentVideoSettings.m_AudioStream &&
         g_settings.m_currentVideoSettings.m_AudioStream >= 0)
-      g_application.m_pPlayer->SetAudioStream(g_settings.m_currentVideoSettings.m_AudioStream);
+      app_player->SetAudioStream(g_settings.m_currentVideoSettings.m_AudioStream);
 
-    g_application.m_pPlayer->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
-    g_application.m_pPlayer->SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
-    g_application.m_pPlayer->SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
-    g_application.m_pPlayer->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
+    app_player->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
+    app_player->SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
+    app_player->SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
+    app_player->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
 
     /* settings can be saved on next channel switch */
     m_bIsValidChannelSettings = true;

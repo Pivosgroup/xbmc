@@ -126,8 +126,12 @@ CGUIWindowFullScreen::~CGUIWindowFullScreen(void)
 
 bool CGUIWindowFullScreen::OnAction(const CAction &action)
 {
-  if (g_application.m_pPlayer != NULL && g_application.m_pPlayer->OnAction(action))
+  {
+    CSingleLock lock(*g_application.getPlayerLock());
+    IPlayer *app_player = g_application.getPlayer();
+    if (app_player && app_player->OnAction(action))
     return true;
+  }
 
   if (m_timeCodePosition > 0 && action.GetButtonCode())
   { // check whether we have a mapping in our virtual videotimeseek "window" and have a select action
@@ -172,40 +176,48 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     if (m_timeCodePosition > 0)
       SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_BACKWARD);
     else
-      g_application.m_pPlayer->Seek(false, false);
+      g_application.SeekPlaying(false, false);
     return true;
 
   case ACTION_STEP_FORWARD:
     if (m_timeCodePosition > 0)
       SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_FORWARD);
     else
-      g_application.m_pPlayer->Seek(true, false);
+      g_application.SeekPlaying(true, false);
     return true;
 
   case ACTION_BIG_STEP_BACK:
     if (m_timeCodePosition > 0)
       SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_BACKWARD);
     else
-      g_application.m_pPlayer->Seek(false, true);
+      g_application.SeekPlaying(false, true);
     return true;
 
   case ACTION_BIG_STEP_FORWARD:
     if (m_timeCodePosition > 0)
       SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_FORWARD);
     else
-      g_application.m_pPlayer->Seek(true, true);
+      g_application.SeekPlaying(true, true);
     return true;
 
   case ACTION_NEXT_SCENE:
-    if (g_application.m_pPlayer->SeekScene(true))
-      g_infoManager.SetDisplayAfterSeek();
-    return true;
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player && app_player->SeekScene(true))
+        g_infoManager.SetDisplayAfterSeek();
+      return true;
+    }
     break;
 
   case ACTION_PREV_SCENE:
-    if (g_application.m_pPlayer->SeekScene(false))
-      g_infoManager.SetDisplayAfterSeek();
-    return true;
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player && app_player->SeekScene(true))
+        g_infoManager.SetDisplayAfterSeek();
+      return true;
+    }
     break;
 
   case ACTION_SHOW_OSD_TIME:
@@ -218,23 +230,28 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
 
   case ACTION_SHOW_SUBTITLES:
     {
-      if (g_application.m_pPlayer->GetSubtitleCount() == 0)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (!app_player)
+        break;
+
+      if (app_player->GetSubtitleCount() == 0)
         return true;
 
       g_settings.m_currentVideoSettings.m_SubtitleOn = !g_settings.m_currentVideoSettings.m_SubtitleOn;
-      g_application.m_pPlayer->SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
+      app_player->SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
       CStdString sub, lang;
       if (g_settings.m_currentVideoSettings.m_SubtitleOn)
       {
-        g_application.m_pPlayer->GetSubtitleName(g_application.m_pPlayer->GetSubtitle(),sub);
-        g_application.m_pPlayer->GetSubtitleLanguage(g_application.m_pPlayer->GetSubtitle(),lang);
+        app_player->GetSubtitleName(app_player->GetSubtitle(),sub);
+        app_player->GetSubtitleLanguage(app_player->GetSubtitle(),lang);
         if (sub != lang)
           sub.Format("%s [%s]", sub.c_str(), lang.c_str());
       }
       else
         sub = g_localizeStrings.Get(1223);
       CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info,
-                                            g_localizeStrings.Get(287), sub, DisplTime, false, MsgTime);
+        g_localizeStrings.Get(287), sub, DisplTime, false, MsgTime);
     }
     return true;
     break;
@@ -253,34 +270,39 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
 
   case ACTION_NEXT_SUBTITLE:
     {
-      if (g_application.m_pPlayer->GetSubtitleCount() == 0)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (!app_player)
+        break;
+
+      if (app_player->GetSubtitleCount() == 0)
         return true;
 
       if(g_settings.m_currentVideoSettings.m_SubtitleStream < 0)
-        g_settings.m_currentVideoSettings.m_SubtitleStream = g_application.m_pPlayer->GetSubtitle();
+        g_settings.m_currentVideoSettings.m_SubtitleStream = app_player->GetSubtitle();
 
       if (g_settings.m_currentVideoSettings.m_SubtitleOn)
       {
         g_settings.m_currentVideoSettings.m_SubtitleStream++;
-        if (g_settings.m_currentVideoSettings.m_SubtitleStream >= g_application.m_pPlayer->GetSubtitleCount())
+        if (g_settings.m_currentVideoSettings.m_SubtitleStream >= app_player->GetSubtitleCount())
         {
           g_settings.m_currentVideoSettings.m_SubtitleStream = 0;
           g_settings.m_currentVideoSettings.m_SubtitleOn = false;
-          g_application.m_pPlayer->SetSubtitleVisible(false);
+          app_player->SetSubtitleVisible(false);
         }
-        g_application.m_pPlayer->SetSubtitle(g_settings.m_currentVideoSettings.m_SubtitleStream);
+        app_player->SetSubtitle(g_settings.m_currentVideoSettings.m_SubtitleStream);
       }
       else
       {
         g_settings.m_currentVideoSettings.m_SubtitleOn = true;
-        g_application.m_pPlayer->SetSubtitleVisible(true);
+        app_player->SetSubtitleVisible(true);
       }
 
       CStdString sub, lang;
       if (g_settings.m_currentVideoSettings.m_SubtitleOn)
       {
-        g_application.m_pPlayer->GetSubtitleName(g_settings.m_currentVideoSettings.m_SubtitleStream,sub);
-        g_application.m_pPlayer->GetSubtitleLanguage(g_settings.m_currentVideoSettings.m_SubtitleStream,lang);
+        app_player->GetSubtitleName(g_settings.m_currentVideoSettings.m_SubtitleStream,sub);
+        app_player->GetSubtitleLanguage(g_settings.m_currentVideoSettings.m_SubtitleStream,lang);
         if (sub != lang)
           sub.Format("%s [%s]", sub.c_str(), lang.c_str());
       }
@@ -295,9 +317,12 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     g_settings.m_currentVideoSettings.m_SubtitleDelay -= 0.1f;
     if (g_settings.m_currentVideoSettings.m_SubtitleDelay < -g_advancedSettings.m_videoSubsDelayRange)
       g_settings.m_currentVideoSettings.m_SubtitleDelay = -g_advancedSettings.m_videoSubsDelayRange;
-    if (g_application.m_pPlayer)
-      g_application.m_pPlayer->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
-
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        app_player->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
+    }
     ShowSlider(action.GetID(), 22006, g_settings.m_currentVideoSettings.m_SubtitleDelay,
                                       -g_advancedSettings.m_videoSubsDelayRange, 0.1f,
                                        g_advancedSettings.m_videoSubsDelayRange);
@@ -307,9 +332,12 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     g_settings.m_currentVideoSettings.m_SubtitleDelay += 0.1f;
     if (g_settings.m_currentVideoSettings.m_SubtitleDelay > g_advancedSettings.m_videoSubsDelayRange)
       g_settings.m_currentVideoSettings.m_SubtitleDelay = g_advancedSettings.m_videoSubsDelayRange;
-    if (g_application.m_pPlayer)
-      g_application.m_pPlayer->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
-
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        app_player->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
+    }
     ShowSlider(action.GetID(), 22006, g_settings.m_currentVideoSettings.m_SubtitleDelay,
                                       -g_advancedSettings.m_videoSubsDelayRange, 0.1f,
                                        g_advancedSettings.m_videoSubsDelayRange);
@@ -331,9 +359,12 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     g_settings.m_currentVideoSettings.m_AudioDelay -= 0.025f;
     if (g_settings.m_currentVideoSettings.m_AudioDelay < -g_advancedSettings.m_videoAudioDelayRange)
       g_settings.m_currentVideoSettings.m_AudioDelay = -g_advancedSettings.m_videoAudioDelayRange;
-    if (g_application.m_pPlayer)
-      g_application.m_pPlayer->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
-
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        app_player->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
+    }
     ShowSlider(action.GetID(), 297, g_settings.m_currentVideoSettings.m_AudioDelay,
                                     -g_advancedSettings.m_videoAudioDelayRange, 0.025f,
                                      g_advancedSettings.m_videoAudioDelayRange);
@@ -343,9 +374,12 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     g_settings.m_currentVideoSettings.m_AudioDelay += 0.025f;
     if (g_settings.m_currentVideoSettings.m_AudioDelay > g_advancedSettings.m_videoAudioDelayRange)
       g_settings.m_currentVideoSettings.m_AudioDelay = g_advancedSettings.m_videoAudioDelayRange;
-    if (g_application.m_pPlayer)
-      g_application.m_pPlayer->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
-
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (app_player)
+        app_player->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
+    }
     ShowSlider(action.GetID(), 297, g_settings.m_currentVideoSettings.m_AudioDelay,
                                     -g_advancedSettings.m_videoAudioDelayRange, 0.025f,
                                      g_advancedSettings.m_videoAudioDelayRange);
@@ -353,18 +387,23 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     break;
   case ACTION_AUDIO_NEXT_LANGUAGE:
     {
-      if (g_application.m_pPlayer->GetAudioStreamCount() == 1)
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (!app_player)
+        break;
+
+      if (app_player->GetAudioStreamCount() == 1)
         return true;
 
       if(g_settings.m_currentVideoSettings.m_AudioStream < 0)
-        g_settings.m_currentVideoSettings.m_AudioStream = g_application.m_pPlayer->GetAudioStream();
+        g_settings.m_currentVideoSettings.m_AudioStream = app_player->GetAudioStream();
 
       g_settings.m_currentVideoSettings.m_AudioStream++;
-      if (g_settings.m_currentVideoSettings.m_AudioStream >= g_application.m_pPlayer->GetAudioStreamCount())
+      if (g_settings.m_currentVideoSettings.m_AudioStream >= app_player->GetAudioStreamCount())
         g_settings.m_currentVideoSettings.m_AudioStream = 0;
-      g_application.m_pPlayer->SetAudioStream(g_settings.m_currentVideoSettings.m_AudioStream);    // Set the audio stream to the one selected
+      app_player->SetAudioStream(g_settings.m_currentVideoSettings.m_AudioStream);    // Set the audio stream to the one selected
       CStdString aud;
-      g_application.m_pPlayer->GetAudioStreamName(g_settings.m_currentVideoSettings.m_AudioStream,aud);
+      app_player->GetAudioStreamName(g_settings.m_currentVideoSettings.m_AudioStream,aud);
       CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(460), aud, DisplTime, false, MsgTime);
       return true;
     }
@@ -608,10 +647,12 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
 
       g_settings.m_currentVideoSettings.m_VolumeAmplification =
         std::max(std::min(g_settings.m_currentVideoSettings.m_VolumeAmplification, sliderMax), sliderMin);
-
-      if (g_application.m_pPlayer)
-        g_application.m_pPlayer->SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
-
+      {
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        if (app_player)
+          app_player->SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
+      }
       ShowSlider(action.GetID(), 660, g_settings.m_currentVideoSettings.m_VolumeAmplification, sliderMin, 1.0f, sliderMax);
 
       break;
@@ -869,34 +910,40 @@ void CGUIWindowFullScreen::FrameMove()
   if (m_bShowCurrentTime)
     g_infoManager.SetDisplayAfterSeek();
 
-  if (!g_application.m_pPlayer) return;
-
-  if( g_application.m_pPlayer->IsCaching() )
   {
-    g_infoManager.SetDisplayAfterSeek(0); //Make sure these stuff aren't visible now
+    CSingleLock lock(*g_application.getPlayerLock());
+    IPlayer *app_player = g_application.getPlayer();
+    if (!app_player)
+      return;
+
+    if(app_player->IsCaching())
+      g_infoManager.SetDisplayAfterSeek(0); //Make sure these stuff aren't visible now
   }
 
   //------------------------
   m_showCodec.Update();
   if (m_showCodec)
   {
+    CSingleLock lock(*g_application.getPlayerLock());
+    IPlayer *app_player = g_application.getPlayer();
+
     // show audio codec info
     CStdString strAudio, strVideo, strGeneral;
-    g_application.m_pPlayer->GetAudioInfo(strAudio);
+    app_player->GetAudioInfo(strAudio);
     {
       CGUIMessage msg(GUI_MSG_LABEL_SET, GetID(), LABEL_ROW1);
       msg.SetLabel(strAudio);
       OnMessage(msg);
     }
     // show video codec info
-    g_application.m_pPlayer->GetVideoInfo(strVideo);
+    app_player->GetVideoInfo(strVideo);
     {
       CGUIMessage msg(GUI_MSG_LABEL_SET, GetID(), LABEL_ROW2);
       msg.SetLabel(strVideo);
       OnMessage(msg);
     }
     // show general info
-    g_application.m_pPlayer->GetGeneralInfo(strGeneral);
+    app_player->GetGeneralInfo(strGeneral);
     {
       CStdString strGeneralFPS;
 #if defined(TARGET_DARWIN)
@@ -951,8 +998,12 @@ void CGUIWindowFullScreen::FrameMove()
     // show sizing information
     CRect SrcRect, DestRect;
     float fAR;
-    g_application.m_pPlayer->GetVideoRect(SrcRect, DestRect);
-    g_application.m_pPlayer->GetVideoAspectRatio(fAR);
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      app_player->GetVideoRect(SrcRect, DestRect);
+      app_player->GetVideoAspectRatio(fAR);
+    }
     {
       // Splitres scaling factor
       RESOLUTION res = g_graphicsContext.GetVideoResolution();
@@ -1059,7 +1110,7 @@ void CGUIWindowFullScreen::Process(unsigned int currentTime, CDirtyRegionList &d
 
 void CGUIWindowFullScreen::Render()
 {
-  if (g_application.m_pPlayer)
+  if (g_application.hasPlayer())
     RenderTTFSubtitles();
   CGUIWindow::Render();
 }
@@ -1074,15 +1125,27 @@ void CGUIWindowFullScreen::RenderTTFSubtitles()
        g_application.GetCurrentPlayer() == EPC_OMXPLAYER ||
 #endif
        g_application.GetCurrentPlayer() == EPC_DVDPLAYER) &&
-      CUtil::IsUsingTTFSubtitles() && (g_application.m_pPlayer->GetSubtitleVisible()))
+       CUtil::IsUsingTTFSubtitles())
   {
-    CSingleLock lock (m_fontLock);
+    bool has_subtitles = false;
+    CStdString subtitleText = "How now brown cow";
 
+    {
+      CSingleLock lock(*g_application.getPlayerLock());
+      IPlayer *app_player = g_application.getPlayer();
+      if (!app_player)
+        return;
+
+      if (!app_player->GetSubtitleVisible())
+        return;
+
+      has_subtitles = app_player->GetCurrentSubtitle(subtitleText);
+    }
     if(!m_subsLayout)
       return;
 
-    CStdString subtitleText = "How now brown cow";
-    if (g_application.m_pPlayer->GetCurrentSubtitle(subtitleText))
+    CSingleLock lock (m_fontLock);
+    if (has_subtitles)
     {
       // Remove HTML-like tags from the subtitles until
       subtitleText.Replace("\\r", "");
@@ -1121,7 +1184,9 @@ void CGUIWindowFullScreen::RenderTTFSubtitles()
       else
       {
         CRect SrcRect, DestRect;
-        g_application.m_pPlayer->GetVideoRect(SrcRect, DestRect);
+        CSingleLock lock(*g_application.getPlayerLock());
+        IPlayer *app_player = g_application.getPlayer();
+        app_player->GetVideoRect(SrcRect, DestRect);
 
         if ((subalign == SUBTITLE_ALIGN_TOP_INSIDE) || (subalign == SUBTITLE_ALIGN_TOP_OUTSIDE))
           y = DestRect.y1;
@@ -1194,7 +1259,10 @@ double CGUIWindowFullScreen::GetTimeCodeStamp()
 
 void CGUIWindowFullScreen::SeekChapter(int iChapter)
 {
-  g_application.m_pPlayer->SeekChapter(iChapter);
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+  if (app_player)
+    app_player->SeekChapter(iChapter);
 
   // Make sure gui items are visible.
   g_infoManager.SetDisplayAfterSeek();
@@ -1228,17 +1296,19 @@ void CGUIWindowFullScreen::OnSliderChange(void *data, CGUISliderControl *slider)
   else
     slider->SetTextValue(CGUIDialogAudioSubtitleSettings::FormatDelay(slider->GetFloatValue(), 0.025f));
 
-  if (g_application.m_pPlayer)
+  CSingleLock lock(*g_application.getPlayerLock());
+  IPlayer *app_player = g_application.getPlayer();
+  if (app_player)
   {
     if (m_sliderAction == ACTION_AUDIO_DELAY)
     {
       g_settings.m_currentVideoSettings.m_AudioDelay = slider->GetFloatValue();
-      g_application.m_pPlayer->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
+      app_player->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
     }
     else if (m_sliderAction == ACTION_SUBTITLE_DELAY)
     {
       g_settings.m_currentVideoSettings.m_SubtitleDelay = slider->GetFloatValue();
-      g_application.m_pPlayer->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
+      app_player->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
     }
   }
 }

@@ -147,6 +147,7 @@ LAuE4Pu13aKiJnfft7hIjbK+5kyb3TysZvoyDnb3HOKvInK7vXbKuU4ISgxB2bB3HcYzQMGsz1qJ\
 
 void CAirTunesServer::AudioOutputFunctions::audio_set_metadata(void *cls, void *session, const void *buffer, int buflen)
 {
+  return;
   CAirTunesServer::SetMetadataFromBuffer((char *)buffer, buflen);
 }
 
@@ -343,7 +344,11 @@ ao_device* CAirTunesServer::AudioOutputFunctions::ao_open_live(int driver_id, ao
     delete device;
     return 0;
   }
+<<<<<<< HEAD
+
+=======
   
+>>>>>>> xbmc-pivos/master
   ThreadMessage tMsg = { TMSG_MEDIA_STOP };
   CApplicationMessenger::Get().SendMessage(tMsg, true);
 
@@ -654,7 +659,7 @@ bool CAirTunesServer::Initialize(const CStdString &password)
   if (m_pLibShairport->Load())
   {
 
-    struct AudioOutput ao;
+    struct AudioOutput ao = {0};
     ao.ao_initialize = AudioOutputFunctions::ao_initialize;
     ao.ao_play = AudioOutputFunctions::ao_play;
     ao.ao_default_driver_id = AudioOutputFunctions::ao_default_driver_id;
